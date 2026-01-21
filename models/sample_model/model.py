@@ -1,4 +1,4 @@
-from odoo import models, fields
+from odoo import api, models, fields
 
 from datetime import datetime
 
@@ -19,6 +19,16 @@ class SampleModelModel(models.Model):
     # Fields Default's
     #
     # ----------------------------------------------------
+
+    @api.model
+    def default_get(self, fields) -> dict:
+        result = super(SampleModelModel, self).default_get(fields)
+        result.update(dict(
+            company_id=self.env.user.company_id.id,
+            user_id=self.env.user.id
+        ))
+        raise Exception(str(type(fields)))
+        return result
 
     def _get_default_data(self):
         """Retorna valor default para campo `Data`.
@@ -55,7 +65,7 @@ class SampleModelModel(models.Model):
         default=_get_default_data # Chama uma função customizada para retornar o valor padrão/inicial do campo quando criamos novos registros.
     )
 
-    # Exemplo do campo de RELACIONAMENTO 1..* (um p/ muitos)
+    # Exemplo do campo de RELACIONAMENTO *..1 (muitos p/ 1)
     # utilizando o modelo padrão do Odoo para cadastro de pessoas
     partner_id = fields.Many2one(
         sttring='Pessoa',
@@ -63,14 +73,14 @@ class SampleModelModel(models.Model):
         requrired=True
     )
 
-    # Exemplo do campo de RELACIONAMENTO 1..* (um p/ muitos)
+    # Exemplo do campo de RELACIONAMENTO *..1 (muitos p/ 1)
     # utilizando o modelo padrão do Odoo para cadastro de usuários
     user_id = fields.Many2one(
         sttring='Usuário',
         comodel_name='res.users'
     )
 
-    # Exemplo do campo de RELACIONAMENTO 1..* (um p/ muitos)
+    # Exemplo do campo de RELACIONAMENTO *..1 (muitos p/ 1)
     # utilizando o modelo padrão do Odoo para cadastro de empresas
     company_id = fields.Many2one(
         sttring='Empresa',
@@ -78,9 +88,10 @@ class SampleModelModel(models.Model):
     )
 
     # Exemplo de campo de VALOR
-    valor = fields.Float(
-        string='Valor do Pagamento',
-        default=0 # Indica um valor fixo padrão/inicial do campo quando está incluindo novos registros.
+    total = fields.Float(
+        string='Valor Total',
+        compute='_compute_total',
+        store=True
     )
 
     # Exemplo de campo INTEIRO
@@ -104,4 +115,12 @@ class SampleModelModel(models.Model):
             * Cancelado: ...
         ''',
         tracking=True # Indica se o campo será logado no registro de Atividades
+    )
+
+    # Exemplo do campo de RELACIONAMENTO 1..* (1 p/ muitos)
+    # utilizada para linkar com modelo filho (ex: vendas + vendas itens)
+    sample_item_model_ids = fields.One2many(
+        sttring='Modelo de Exemplo',
+        comodel_name='app.odoo_sample_module.sample_item_model',
+        inverse_name='sample_model_id'
     )

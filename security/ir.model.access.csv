@@ -2,4 +2,5 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 
 access_app_odoo_sample_module_get_started_model_group_user,Get Started - Grupo Usuário,model_app_odoo_sample_module_get_started_model,base.group_user,1,1,1,1
 access_app_odoo_sample_module_sample_model_group_user,Módulo de Exemplo - Grupo Usuário,model_app_odoo_sample_module_sample_model,base.group_user,1,1,1,1
+access_app_odoo_sample_module_sample_item_model_group_user,Item Módulo de Exemplo - Grupo Usuário,model_app_odoo_sample_module_sample_item_model,base.group_user,1,1,1,1
 access_app_odoo_sample_module_metodo_pagamento_group_user,Métodos de Pagamento - Grupo Usuário,model_app_odoo_sample_module_metodo_pagamento,base.group_user,1,1,1,1
