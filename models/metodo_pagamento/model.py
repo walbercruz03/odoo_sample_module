@@ -20,3 +20,7 @@ class MetodoPagamentoModel(models.Model):
     name = fields.Char(
         string='Nome'
     )
+
+    roupa = fields.Char(
+        string="Roupa"
+    )
