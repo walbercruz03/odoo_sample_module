@@ -51,6 +51,17 @@
                                 action="action_odoo_sample_module_metodo_pagamento"
                                 groups="base.group_user" />
 
+                        <!--Parte aluno-->
+                        <menuitem id="menu_odoo_sample_module_register_general_alunos"
+                                name="Alunos"
+                                parent="menu_odoo_sample_module_register_general"
+                                sequence="4"
+                                action="base.action_partner_form"
+                                groups="base.group_user" />        
+      
+
+                                
+
                     <!-- END BLOCK MENU :  Geral -->
 
                 <!-- END BLOCK MENU : Register -->

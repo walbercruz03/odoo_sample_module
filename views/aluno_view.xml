@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<odoo>
+    <data>
+        <record id="action_alunos_contatos" model="ir.actions.act_window">
+            <field name="name">Alunos</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">kanban,form</field>
+            <field name="domain">[('is_student', '=', True)]</field>
+            <field name="context">{'default_is_student': True}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Cadastre seu primeiro aluno!
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="menu_odoo_sample_module_register_general_alunos"
+                  name="Alunos"
+                  parent="menu_odoo_sample_module_register_general"
+                  sequence="4"
+                  action="action_alunos_contatos"
+                  groups="base.group_user" />
+    </data> 
+</odoo>

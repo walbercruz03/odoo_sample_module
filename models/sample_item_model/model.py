@@ -1,60 +1,67 @@
-from odoo import models, fields
+from odoo import api, models, fields
 
-
-class SampleModelModel(models.Model):
+class SampleItemModel(models.Model):
 
     # ----------------------------------------------------
-    #
     # Model Definition
-    #
     # ----------------------------------------------------
 
     _name = 'app.odoo_sample_module.sample_item_model'
+    _description = 'Itens do Modelo de Exemplo'
 
     # ----------------------------------------------------
-    #
-    # Fields
-    #
+    # Fields (CORRIGIDOS: required e string)
     # ----------------------------------------------------
 
-    # Exemplo do campo de TEXTO
+    # Exemplo do campo de TEXTO computado
     name = fields.Char(
-        string='Nome', # Indica o label que será exibido para o usuário
-        compute='_compute_name', # Informa o nome da função de cálculo utilizada para preencher o campo.
-        store=True # Indica que o campo computado deve ser gravado no banco de dados
+        string='Nome',
+        compute='_compute_name',
+        store=True
     )
 
-    # Exemplo do campo de TEXTO
     descricao = fields.Char(
-        string='Descrição', # Indica o label que será exibido para o usuário
-        size=100, # Indica o tamanho máximo do campo
-        requrired=True, # Indica se o campo é obrigatório
-        help='Informa o nome do produto' # Indica o texto de ajuda a ser mostrado para o usuário
+        string='Descrição',
+        size=100,
+        required=True, # Corrigido de requrired
+        help='Informa o nome do produto'
     )
 
-    # Exemplo do campo de RELACIONAMENTO *..1 (muitos p/ 1)
-    # utilizado para linkar com o modelo pai (Ex: vendas + vendas itens)
+    # Relacionamento com o Modelo Pai
     sample_model_id = fields.Many2one(
-        sttring='Modelo de Exemplo',
+        string='Modelo de Exemplo', # Corrigido de sttring
         comodel_name='app.odoo_sample_module.sample_model',
-        requrired=True
+        required=True # Corrigido de requrired
     )
 
-    # Exemplo de campo de QUANTIDADE
     quantidade = fields.Float(
-        string='Quantidade', # Indica o label que será exibido para o usuário
-        default=0 # Indica um valor fixo padrão/inicial do campo quando está incluindo novos registros.
+        string='Quantidade',
+        default=0
     )
 
-    # Exemplo de campo de VALOR
     valor = fields.Float(
-        string='Valor do Item', # Indica o label que será exibido para o usuário
-        default=0 # Indica um valor fixo padrão/inicial do campo quando está incluindo novos registros.
+        string='Valor do Item',
+        default=0
     )
 
-    # Exemplo de campo de TOTAL
     subtotal = fields.Float(
-        string='Subtotal', # Indica o label que será exibido para o usuário
-        compute='_compute_subtotal', # Informa o nome da função de cálculo utilizada para preencher o campo.
-        store=True # Indica que o campo computado deve ser gravado no banco de dados
+        string='Subtotal',
+        compute='_compute_subtotal',
+        store=True
     )
+
+    # ----------------------------------------------------
+    # Business Logic (Funções de Cálculo)
+    # ----------------------------------------------------
+
+    @api.depends('descricao')
+    def _compute_name(self):
+        """Define o nome baseado na descrição."""
+        for record in self:
+            record.name = record.descricao or "Novo Item"
+
+    @api.depends('quantidade', 'valor')
+    def _compute_subtotal(self):
+        """Calcula o subtotal: quantidade * valor."""
+        for record in self:
+            record.subtotal = record.quantidade * record.valor
