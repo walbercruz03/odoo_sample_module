@@ -1,9 +1,134 @@
-from odoo import models, fields
+from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
+from datetime import timedelta
 
+# =================================================================
+# 1. PARCEIROS: CRÉDITOS, VALIDADE E MARKETING
+# =================================================================
 class ResPartner(models.Model):
     _inherit = 'res.partner'
-    is_student = fields.Boolean(string="E Aluno", default=False)
 
+    is_student = fields.Boolean(string="É Aluno", default=False)
+    is_instructor = fields.Boolean(string="É Instrutor", default=False)
+    
+    # Requisito: Visibilidade de créditos e validade [cite: 8, 11]
+    credit_count = fields.Integer(string="Saldo de Créditos", default=0)
+    credit_expiration = fields.Date(string="Validade dos Créditos")
+    
+    # Requisito: Alunos corporativos e centro de custo 
+    cost_center_id = fields.Many2one('account.analytic.account', string="Centro de Custo")
 
-model = ResPartner
+    # Requisito: Dados para Marketing (Churn/Retenção) 
+    last_lesson_date = fields.Datetime(string="Última Aula", readonly=True)
+    nps_avg = fields.Float(string="NPS Médio", compute="_compute_nps_avg")
 
+    def _compute_nps_avg(self):
+        # Lógica simplificada para fins de MVP
+        for rec in self:
+            rec.nps_avg = 9.0 
+
+# =================================================================
+# 2. TURMA: CAPACIDADE E LISTA DE ESPERA 
+# =================================================================
+class StudioClass(models.Model):
+    _name = 'studio.class'
+    _description = 'Turma Planejada'
+
+    name = fields.Char(string="Código da Turma", required=True)
+    modality = fields.Selection([
+        ('yoga', 'Yoga'), ('pilates', 'Pilates'), ('fitness', 'Funcional')
+    ], string="Modalidade", required=True)
+    
+    # Requisito: Preço Dinâmico [cite: 9]
+    credit_cost = fields.Integer(string="Custo em Créditos", default=1)
+    
+    capacity = fields.Integer(string="Capacidade Máxima", default=10)
+    instructor_id = fields.Many2one('res.partner', string="Instrutor", domain=[('is_instructor', '=', True)])
+    
+    # Requisito: Multi-company [cite: 14, 21]
+    company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company)
+
+    # Requisito: Lista de Espera Automática 
+    registration_ids = fields.One2many('studio.class.registration', 'class_id', string="Inscrições")
+    seats_occupied = fields.Integer(string="Vagas Ocupadas", compute="_compute_seats")
+
+    @api.depends('registration_ids.state')
+    def _compute_seats(self):
+        for rec in self:
+            rec.seats_occupied = len(rec.registration_ids.filtered(lambda r: r.state == 'confirmed'))
+
+class StudioClassRegistration(models.Model):
+    _name = 'studio.class.registration'
+    _description = 'Registro de Inscrição'
+    _order = 'sequence, id' # Garante a ordem da fila de espera
+
+    sequence = fields.Integer(default=10)
+    class_id = fields.Many2one('studio.class', string="Turma")
+    student_id = fields.Many2one('res.partner', string="Aluno", domain=[('is_student', '=', True)])
+    state = fields.Selection([
+        ('confirmed', 'Confirmado'),
+        ('waiting', 'Lista de Espera')
+    ], string="Status", compute="_compute_state", store=True)
+
+    @api.depends('sequence', 'class_id.capacity')
+    def _compute_state(self):
+        """ Requisito: Promove aluno automaticamente  """
+        for rec in self:
+            prev_regs = self.search_count([
+                ('class_id', '=', rec.class_id.id),
+                ('id', '<', rec.id if rec.id else 999999)
+            ])
+            rec.state = 'confirmed' if prev_regs < rec.class_id.capacity else 'waiting'
+
+# =================================================================
+# 3. AULA: CHECK-IN E REGRAS DE 4H [cite: 12, 18]
+# =================================================================
+class StudioLesson(models.Model):
+    _name = 'studio.lesson'
+    _description = 'Aula Realizada'
+
+    class_id = fields.Many2one('studio.class', string="Turma", required=True)
+    date = fields.Datetime(string="Data da Aula", default=fields.Datetime.now)
+    attendance_ids = fields.Many2many('res.partner', string="Check-in Realizado")
+    state = fields.Selection([
+        ('draft', 'Agendada'), ('done', 'Realizada'), ('cancel', 'Cancelada')
+    ], default='draft', string="Status")
+
+    def action_confirm_attendance(self):
+        """ Requisito: Controle de créditos no Check-in [cite: 18] """
+        cost = self.class_id.credit_cost
+        for student in self.attendance_ids:
+            if student.credit_expiration and student.credit_expiration < fields.Date.today():
+                raise ValidationError(_("Créditos do aluno %s estão expirados!") % student.name)
+            if student.credit_count < cost:
+                raise ValidationError(_("Saldo insuficiente para %s!") % student.name)
+            
+            student.credit_count -= cost
+            student.last_lesson_date = fields.Datetime.now()
+        self.state = 'done'
+
+    def action_cancel_lesson(self):
+        """ Requisito: Regra de cancelamento de 4h [cite: 12] """
+        limit_time = self.date - timedelta(hours=4)
+        is_late = fields.Datetime.now() > limit_time
+        
+        if not is_late:
+            # Requisito: Devolve crédito se > 4h [cite: 12]
+            cost = self.class_id.credit_cost
+            for student in self.attendance_ids:
+                student.credit_count += cost
+        
+        self.state = 'cancel'
+
+# =================================================================
+# 4. FATURAMENTO E RELATÓRIO [cite: 15, 20]
+# =================================================================
+class StudioBilling(models.Model):
+    _name = 'studio.billing'
+    _description = 'Base para Faturamento Corporativo'
+
+    company_id = fields.Many2one('res.company', string="Empresa", required=True)
+    period = fields.Char(string="Período (MM/AAAA)", required=True)
+    cost_center_id = fields.Many2one('account.analytic.account', string="Centro de Custo")
+    total_consumption = fields.Float(string="Total de Créditos Consumidos")
+    report_details = fields.Text(string="Detalhamento por Aluno")

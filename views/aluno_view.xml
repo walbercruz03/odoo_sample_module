@@ -1,24 +1,154 @@
 <?xml version="1.0"?>
 <odoo>
     <data>
-        <record id="action_alunos_contatos" model="ir.actions.act_window">
-            <field name="name">Alunos</field>
-            <field name="res_model">res.partner</field>
-            <field name="view_mode">kanban,form</field>
-            <field name="domain">[('is_student', '=', True)]</field>
-            <field name="context">{'default_is_student': True}</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    Cadastre seu primeiro aluno!
-                </p>
+        <record id="view_partner_form_vivafit" model="ir.ui.view">
+            <field name="name">res.partner.form.vivafit</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='function']" position="after">
+                    <field name="is_student"/>
+                    <field name="is_instructor"/>
+                    <field name="credit_count" invisible="not is_student"/>
+                    <field name="credit_expiration" invisible="not is_student"/>
+                    <field name="cost_center_id" invisible="not is_student"/>
+                    <field name="last_lesson_date" readonly="1" invisible="not is_student"/>
+                    <field name="nps_avg" readonly="1" invisible="not is_student"/>
+                </xpath>
             </field>
         </record>
 
-        <menuitem id="menu_odoo_sample_module_register_general_alunos"
-                  name="Alunos"
-                  parent="menu_odoo_sample_module_register_general"
-                  sequence="4"
-                  action="action_alunos_contatos"
-                  groups="base.group_user" />
+        <record id="view_studio_class_list" model="ir.ui.view">
+            <field name="name">studio.class.list</field>
+            <field name="model">studio.class</field>
+            <field name="arch" type="xml">
+                <list decoration-danger="seats_occupied >= capacity">
+                    <field name="name"/>
+                    <field name="modality"/>
+                    <field name="credit_cost"/> <field name="instructor_id"/>
+                    <field name="seats_occupied"/>
+                    <field name="capacity"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_studio_class_form" model="ir.ui.view">
+            <field name="name">studio.class.form</field>
+            <field name="model">studio.class</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" placeholder="Ex: TURMA-YOGA-01"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="modality"/>
+                                <field name="instructor_id"/>
+                                <field name="credit_cost"/>
+                            </group>
+                            <group>
+                                <field name="capacity"/>
+                                <field name="seats_occupied"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Inscrições e Lista de Espera">
+                                <field name="registration_ids">
+                                    <list editable="bottom" default_order="sequence">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="student_id"/>
+                                        <field name="state" widget="badge" 
+                                               decoration-success="state == 'confirmed'" 
+                                               decoration-warning="state == 'waiting'"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_studio_lesson_form" model="ir.ui.view">
+            <field name="name">studio.lesson.form</field>
+            <field name="model">studio.lesson</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_confirm_attendance" string="Confirmar Presença (Check-in)" 
+                                type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                        <button name="action_cancel_lesson" string="Cancelar Aula" 
+                                type="object" invisible="state != 'draft'"/>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="class_id"/>
+                            <field name="date"/>
+                        </group>
+                        <separator string="Alunos que compareceram"/>
+                        <field name="attendance_ids">
+                            <list>
+                                <field name="name"/>
+                                <field name="credit_count"/>
+                                <field name="credit_expiration"/>
+                            </list>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_studio_billing_list" model="ir.ui.view">
+            <field name="name">studio.billing.list</field>
+            <field name="model">studio.billing</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="period"/>
+                    <field name="company_id"/>
+                    <field name="cost_center_id"/>
+                    <field name="total_consumption" sum="Total Consumido"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="action_alunos_contatos" model="ir.actions.act_window">
+            <field name="name">Alunos</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">kanban,list,form</field>
+            <field name="domain">[('is_student', '=', True)]</field>
+            <field name="context">{'default_is_student': True}</field>
+        </record>
+
+        <record id="action_studio_class" model="ir.actions.act_window">
+            <field name="name">Turmas</field>
+            <field name="res_model">studio.class</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_studio_lesson" model="ir.actions.act_window">
+            <field name="name">Check-in de Aulas</field>
+            <field name="res_model">studio.lesson</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_studio_billing" model="ir.actions.act_window">
+            <field name="name">Faturamento Corporativo</field>
+            <field name="res_model">studio.billing</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem id="menu_vivafit_root" name="VivaFit" sequence="1" web_icon="base,static/description/icon.png"/>
+        
+        <menuitem id="menu_vivafit_operacional" name="Operacional" parent="menu_vivafit_root" sequence="10"/>
+        <menuitem id="menu_vivafit_alunos" name="Alunos" parent="menu_vivafit_operacional" action="action_alunos_contatos" sequence="10"/>
+        <menuitem id="menu_vivafit_turmas" name="Turmas" parent="menu_vivafit_operacional" action="action_studio_class" sequence="20"/>
+        <menuitem id="menu_vivafit_aulas" name="Diário (Check-in)" parent="menu_vivafit_operacional" action="action_studio_lesson" sequence="30"/>
+        
+        <menuitem id="menu_vivafit_financeiro" name="Financeiro" parent="menu_vivafit_root" sequence="20"/>
+        <menuitem id="menu_vivafit_billing" name="Faturamento Corp." parent="menu_vivafit_financeiro" action="action_studio_billing" sequence="10"/>
     </data> 
 </odoo>
