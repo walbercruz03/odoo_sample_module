@@ -115,6 +115,51 @@
             </field>
         </record>
 
+        <record id="view_studio_billing_list" model="ir.ui.view">
+            <field name="name">studio.billing.list</field>
+            <field name="model">studio.billing</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="period"/>
+                    <field name="company_id"/>
+                    <field name="cost_center_id"/>
+                    <field name="total_consumption" sum="Total Consumido"/>
+                </list>
+            </field>
+        </record>
+
+<!-- NOVA VIEW FORM COM BOTÃO -->
+        <record id="view_studio_billing_form" model="ir.ui.view">
+            <field name="name">studio.billing.form</field>
+            <field name="model">studio.billing</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_generate_report"
+                                string="Gerar Relatório"
+                                type="object"
+                                class="oe_highlight"/>
+                    </header>
+
+                    <sheet>
+                        <group>
+                            <field name="period"/>
+                            <field name="company_id"/>
+                            <field name="cost_center_id"/>
+                        </group>
+
+                        <group>
+                            <field name="total_consumption" readonly="1"/>
+                        </group>
+
+                        <group>
+                            <field name="report_details" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
         <record id="action_alunos_contatos" model="ir.actions.act_window">
             <field name="name">Alunos</field>
             <field name="res_model">res.partner</field>

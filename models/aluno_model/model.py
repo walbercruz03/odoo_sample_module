@@ -60,30 +60,56 @@ class StudioClass(models.Model):
 class StudioClassRegistration(models.Model):
     _name = 'studio.class.registration'
     _description = 'Registro de Inscrição'
-    _order = 'sequence, id' # Garante a ordem da fila de espera
+    _order = 'sequence, id'
+
+    # impede aluno duplicado na turma
+    _sql_constraints = [
+        (
+            'unique_student_class',
+            'unique(class_id, student_id)',
+            'O aluno já está inscrito nesta turma!'
+        )
+    ]
 
     sequence = fields.Integer(default=10)
-    class_id = fields.Many2one('studio.class', string="Turma")
-    student_id = fields.Many2one('res.partner', string="Aluno", domain=[('is_student', '=', True)])
+
+    class_id = fields.Many2one(
+        'studio.class',
+        string="Turma",
+        required=True
+    )
+
+    student_id = fields.Many2one(
+        'res.partner',
+        string="Aluno",
+        domain=[('is_student', '=', True)],
+        required=True
+    )
+
     state = fields.Selection([
         ('confirmed', 'Confirmado'),
         ('waiting', 'Lista de Espera')
-    ], string="Status", compute="_compute_state", store=True)
+    ],
+    string="Status",
+    compute="_compute_state",
+    store=True
+    )
+
 
     @api.depends('sequence', 'class_id.capacity')
     def _compute_state(self):
-        """ Requisito: Promove aluno automaticamente  """
         for rec in self:
             prev_regs = self.search_count([
                 ('class_id', '=', rec.class_id.id),
-                ('id', '<', rec.id if rec.id else 999999)
+                ('sequence', '<', rec.sequence)
             ])
             rec.state = 'confirmed' if prev_regs < rec.class_id.capacity else 'waiting'
 
 # =================================================================
 # 3. AULA: CHECK-IN E REGRAS DE 4H [cite: 12, 18]
 # =================================================================
-class StudioLesson(models.Model):
+class StudioLesson(models.Model): 
+
     _name = 'studio.lesson'
     _description = 'Aula Realizada'
 
@@ -108,12 +134,12 @@ class StudioLesson(models.Model):
         self.state = 'done'
 
     def action_cancel_lesson(self):
-        """ Requisito: Regra de cancelamento de 4h [cite: 12] """
+        """ Requisito: Regra de cancelamento de 4h  """
         limit_time = self.date - timedelta(hours=4)
         is_late = fields.Datetime.now() > limit_time
         
         if not is_late:
-            # Requisito: Devolve crédito se > 4h [cite: 12]
+            # Requisito: Devolve crédito se > 4h 
             cost = self.class_id.credit_cost
             for student in self.attendance_ids:
                 student.credit_count += cost
@@ -132,3 +158,23 @@ class StudioBilling(models.Model):
     cost_center_id = fields.Many2one('account.analytic.account', string="Centro de Custo")
     total_consumption = fields.Float(string="Total de Créditos Consumidos")
     report_details = fields.Text(string="Detalhamento por Aluno")
+
+    def action_generate_report(self):
+
+        lessons = self.env['studio.lesson'].search([
+            ('state', '=', 'done')
+        ])
+
+        total = 0
+        details = []
+
+        for lesson in lessons:
+            cost = lesson.class_id.credit_cost
+
+            for student in lesson.attendance_ids:
+                if student.cost_center_id == self.cost_center_id:
+                    total += cost
+                    details.append(f"{student.name} - {lesson.date}")
+
+        self.total_consumption = total
+        self.report_details = "\n".join(details)

@@ -1,6 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 
-access_studio_studio_group_user,Estúdio - Grupo Usuário,model_studio_studio,base.group_user,1,1,1,1
+
 access_studio_class_group_user,Turma - Grupo Usuário,model_studio_class,base.group_user,1,1,1,1
 access_studio_lesson_group_user,Aula - Grupo Usuário,model_studio_lesson,base.group_user,1,1,1,1
 access_studio_billing_group_user,Faturamento - Grupo Usuário,model_studio_billing,base.group_user,1,1,1,1
