@@ -49,7 +49,7 @@
                                 parent="menu_odoo_sample_module_register_general"
                                 sequence="3"
                                 action="action_odoo_sample_module_metodo_pagamento"
-                                groups="base.group_user" />
+                                groups="base.group_user" />www
 
                         <!--Parte aluno-->
                         <menuitem id="menu_odoo_sample_module_register_general_alunos"
