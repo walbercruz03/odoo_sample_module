@@ -1,6 +1,6 @@
+from datetime import timedelta
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
-from datetime import timedelta
 
 # =================================================================
 # 1. PARCEIROS: CRÉDITOS, VALIDADE E MARKETING
@@ -11,7 +11,7 @@ class ResPartner(models.Model):
     is_student = fields.Boolean(string="É Aluno", default=False)
     is_instructor = fields.Boolean(string="É Instrutor", default=False)
     
-    # Requisito: Visibilidade de créditos e validade [cite: 8, 11]
+    # Requisito: Visibilidade de créditos e validade 
     credit_count = fields.Integer(string="Saldo de Créditos", default=0)
     credit_expiration = fields.Date(string="Validade dos Créditos")
     
@@ -39,13 +39,13 @@ class StudioClass(models.Model):
         ('yoga', 'Yoga'), ('pilates', 'Pilates'), ('fitness', 'Funcional')
     ], string="Modalidade", required=True)
     
-    # Requisito: Preço Dinâmico [cite: 9]
+    # Requisito: Preço Dinâmico 
     credit_cost = fields.Integer(string="Custo em Créditos", default=1)
     
     capacity = fields.Integer(string="Capacidade Máxima", default=10)
     instructor_id = fields.Many2one('res.partner', string="Instrutor", domain=[('is_instructor', '=', True)])
     
-    # Requisito: Multi-company [cite: 14, 21]
+    # Requisito: Multi-company 
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company)
 
     # Requisito: Lista de Espera Automática 
@@ -83,7 +83,8 @@ class StudioClassRegistration(models.Model):
         'res.partner',
         string="Aluno",
         domain=[('is_student', '=', True)],
-        required=True
+        required=True,
+        ondelete='cascade'
     )
 
     state = fields.Selection([
@@ -106,14 +107,14 @@ class StudioClassRegistration(models.Model):
             rec.state = 'confirmed' if prev_regs < rec.class_id.capacity else 'waiting'
 
 # =================================================================
-# 3. AULA: CHECK-IN E REGRAS DE 4H [cite: 12, 18]
+# 3. AULA: CHECK-IN E REGRAS DE 4H 
 # =================================================================
 class StudioLesson(models.Model): 
 
     _name = 'studio.lesson'
     _description = 'Aula Realizada'
 
-    class_id = fields.Many2one('studio.class', string="Turma", required=True)
+    class_id = fields.Many2one('studio.class', string="Turma", required=True, ondelete='cascade')
     date = fields.Datetime(string="Data da Aula", default=fields.Datetime.now)
     attendance_ids = fields.Many2many('res.partner', string="Check-in Realizado")
     state = fields.Selection([
@@ -121,7 +122,7 @@ class StudioLesson(models.Model):
     ], default='draft', string="Status")
 
     def action_confirm_attendance(self):
-        """ Requisito: Controle de créditos no Check-in [cite: 18] """
+        """ Requisito: Controle de créditos no Check-in """
         cost = self.class_id.credit_cost
         for student in self.attendance_ids:
             if student.credit_expiration and student.credit_expiration < fields.Date.today():
@@ -135,6 +136,9 @@ class StudioLesson(models.Model):
 
     def action_cancel_lesson(self):
         """ Requisito: Regra de cancelamento de 4h  """
+        if self.state == 'cancel':
+            return True
+            
         limit_time = self.date - timedelta(hours=4)
         is_late = fields.Datetime.now() > limit_time
         
@@ -147,7 +151,7 @@ class StudioLesson(models.Model):
         self.state = 'cancel'
 
 # =================================================================
-# 4. FATURAMENTO E RELATÓRIO [cite: 15, 20]
+# 4. FATURAMENTO E RELATÓRIO 
 # =================================================================
 class StudioBilling(models.Model):
     _name = 'studio.billing'

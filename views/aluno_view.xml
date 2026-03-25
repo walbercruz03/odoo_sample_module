@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <odoo>
     <data>
+<!--View de Parceiros (Alunos e Instrutores)-->
+
         <record id="view_partner_form_vivafit" model="ir.ui.view">
             <field name="name">res.partner.form.vivafit</field>
             <field name="model">res.partner</field>
@@ -17,6 +19,8 @@
                 </xpath>
             </field>
         </record>
+
+<!--View de Turmas (Configuração e Lista de Espera)--> 
 
         <record id="view_studio_class_list" model="ir.ui.view">
             <field name="name">studio.class.list</field>
@@ -72,6 +76,22 @@
             </field>
         </record>
 
+<!--View de Aulas (Operacional e Check-in)-->
+       <record id="view_studio_lesson_list" model="ir.ui.view">
+            <field name="name">studio.lesson.list</field>
+            <field name="model">studio.lesson</field>
+            <field name="arch" type="xml">
+                <list decoration-info="state == 'draft'" decoration-success="state == 'done'" decoration-muted="state == 'cancel'">
+                    <field name="date"/>
+                    <field name="class_id"/>
+                    <field name="state" widget="badge" 
+                           decoration-info="state == 'draft'" 
+                           decoration-success="state == 'done'" 
+                           decoration-danger="state == 'cancel'"/>
+                </list>
+            </field>
+        </record>
+
         <record id="view_studio_lesson_form" model="ir.ui.view">
             <field name="name">studio.lesson.form</field>
             <field name="model">studio.lesson</field>
@@ -80,8 +100,10 @@
                     <header>
                         <button name="action_confirm_attendance" string="Confirmar Presença (Check-in)" 
                                 type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                        
                         <button name="action_cancel_lesson" string="Cancelar Aula" 
                                 type="object" invisible="state != 'draft'"/>
+                                
                         <field name="state" widget="statusbar"/>
                     </header>
                     <sheet>
@@ -101,19 +123,8 @@
                 </form>
             </field>
         </record>
-
-        <record id="view_studio_billing_list" model="ir.ui.view">
-            <field name="name">studio.billing.list</field>
-            <field name="model">studio.billing</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="period"/>
-                    <field name="company_id"/>
-                    <field name="cost_center_id"/>
-                    <field name="total_consumption" sum="Total Consumido"/>
-                </list>
-            </field>
-        </record>
+        
+<!--View de Faturamento Corporativo (Relatórios)-->
 
         <record id="view_studio_billing_list" model="ir.ui.view">
             <field name="name">studio.billing.list</field>
@@ -129,6 +140,7 @@
         </record>
 
 <!-- NOVA VIEW FORM COM BOTÃO -->
+
         <record id="view_studio_billing_form" model="ir.ui.view">
             <field name="name">studio.billing.form</field>
             <field name="model">studio.billing</field>
