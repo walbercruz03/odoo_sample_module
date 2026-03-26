@@ -11,19 +11,13 @@ class ResPartner(models.Model):
     is_student = fields.Boolean(string="É Aluno", default=False)
     is_instructor = fields.Boolean(string="É Instrutor", default=False)
     
-    # Requisito: Visibilidade de créditos e validade 
     credit_count = fields.Integer(string="Saldo de Créditos", default=0)
     credit_expiration = fields.Date(string="Validade dos Créditos")
-    
-    # Requisito: Alunos corporativos e centro de custo 
     cost_center_id = fields.Many2one('account.analytic.account', string="Centro de Custo")
-
-    # Requisito: Dados para Marketing (Churn/Retenção) 
     last_lesson_date = fields.Datetime(string="Última Aula", readonly=True)
     nps_avg = fields.Float(string="NPS Médio", compute="_compute_nps_avg")
 
     def _compute_nps_avg(self):
-        # Lógica simplificada para fins de MVP
         for rec in self:
             rec.nps_avg = 9.0 
 
@@ -39,16 +33,10 @@ class StudioClass(models.Model):
         ('yoga', 'Yoga'), ('pilates', 'Pilates'), ('fitness', 'Funcional')
     ], string="Modalidade", required=True)
     
-    # Requisito: Preço Dinâmico 
     credit_cost = fields.Integer(string="Custo em Créditos", default=1)
-    
     capacity = fields.Integer(string="Capacidade Máxima", default=10)
     instructor_id = fields.Many2one('res.partner', string="Instrutor", domain=[('is_instructor', '=', True)])
-    
-    # Requisito: Multi-company 
     company_id = fields.Many2one('res.company', string='Empresa', default=lambda self: self.env.company)
-
-    # Requisito: Lista de Espera Automática 
     registration_ids = fields.One2many('studio.class.registration', 'class_id', string="Inscrições")
     seats_occupied = fields.Integer(string="Vagas Ocupadas", compute="_compute_seats")
 
@@ -62,57 +50,32 @@ class StudioClassRegistration(models.Model):
     _description = 'Registro de Inscrição'
     _order = 'sequence, id'
 
-    # impede aluno duplicado na turma
-    _sql_constraints = [
-        (
-            'unique_student_class',
-            'unique(class_id, student_id)',
-            'O aluno já está inscrito nesta turma!'
-        )
-    ]
+    _sql_constraints = [('unique_student_class', 'unique(class_id, student_id)', 'O aluno já está inscrito!')]
 
     sequence = fields.Integer(default=10)
-
-    class_id = fields.Many2one(
-        'studio.class',
-        string="Turma",
-        required=True
-    )
-
-    student_id = fields.Many2one(
-        'res.partner',
-        string="Aluno",
-        domain=[('is_student', '=', True)],
-        required=True,
-        ondelete='cascade'
-    )
-
-    state = fields.Selection([
-        ('confirmed', 'Confirmado'),
-        ('waiting', 'Lista de Espera')
-    ],
-    string="Status",
-    compute="_compute_state",
-    store=True
-    )
-
+    class_id = fields.Many2one('studio.class', string="Turma", required=True)
+    student_id = fields.Many2one('res.partner', string="Aluno", domain=[('is_student', '=', True)], required=True, ondelete='cascade')
+    state = fields.Selection([('confirmed', 'Confirmado'), ('waiting', 'Lista de Espera')], string="Status", compute="_compute_state", store=True)
 
     @api.depends('sequence', 'class_id.capacity')
     def _compute_state(self):
         for rec in self:
-            prev_regs = self.search_count([
-                ('class_id', '=', rec.class_id.id),
-                ('sequence', '<', rec.sequence)
-            ])
+            prev_regs = self.search_count([('class_id', '=', rec.class_id.id), ('sequence', '<', rec.sequence)])
             rec.state = 'confirmed' if prev_regs < rec.class_id.capacity else 'waiting'
 
 # =================================================================
 # 3. AULA: CHECK-IN E REGRAS DE 4H 
 # =================================================================
 class StudioLesson(models.Model): 
-
     _name = 'studio.lesson'
     _description = 'Aula Realizada'
+
+    # TRAVA: Impede criar dois registros para a mesma turma e horário
+    _sql_constraints = [
+        ('unique_lesson_per_class_date', 
+         'unique(class_id, date)', 
+         'Já existe um registro de aula para esta turma nesta data e hora!')
+    ]
 
     class_id = fields.Many2one('studio.class', string="Turma", required=True, ondelete='cascade')
     date = fields.Datetime(string="Data da Aula", default=fields.Datetime.now)
@@ -121,35 +84,45 @@ class StudioLesson(models.Model):
         ('draft', 'Agendada'), ('done', 'Realizada'), ('cancel', 'Cancelada')
     ], default='draft', string="Status")
 
+    # Memória para o faturamento saber se o cancelamento foi pago
+    is_late_cancel = fields.Boolean(string="Cobrar Cancelamento", default=False, readonly=True)
+
     def action_confirm_attendance(self):
         """ Requisito: Controle de créditos no Check-in """
         cost = self.class_id.credit_cost
         for student in self.attendance_ids:
             if student.credit_expiration and student.credit_expiration < fields.Date.today():
-                raise ValidationError(_("Créditos do aluno %s estão expirados!") % student.name)
+                raise ValidationError("Créditos de %s expirados!" % student.name)
             if student.credit_count < cost:
-                raise ValidationError(_("Saldo insuficiente para %s!") % student.name)
+                raise ValidationError("Saldo insuficiente para %s!" % student.name)
             
             student.credit_count -= cost
             student.last_lesson_date = fields.Datetime.now()
         self.state = 'done'
 
     def action_cancel_lesson(self):
-        """ Requisito: Regra de cancelamento de 4h  """
+        """ Regra de cancelamento de 4h (Executa em qualquer lugar do sistema) """
+        # Se já estiver cancelada, interrompe para não devolver crédito duas vezes
         if self.state == 'cancel':
             return True
             
+        # 1. Calcula o limite de 4 horas antes da aula
         limit_time = self.date - timedelta(hours=4)
-        is_late = fields.Datetime.now() > limit_time
+        is_early = fields.Datetime.now() < limit_time
         
-        if not is_late:
-            # Requisito: Devolve crédito se > 4h 
+        # 2. Se for CEDO (is_early), devolve o crédito sempre (independente do status anterior)
+        if is_early:
             cost = self.class_id.credit_cost
             for student in self.attendance_ids:
                 student.credit_count += cost
+            self.is_late_cancel = False 
+        else:
+            # 3. Se for TARDE, não devolve e marca para cobrar da empresa no faturamento
+            self.is_late_cancel = True
         
+        # 4. Muda o status para cancelado
         self.state = 'cancel'
-
+        
 # =================================================================
 # 4. FATURAMENTO E RELATÓRIO 
 # =================================================================
@@ -164,21 +137,18 @@ class StudioBilling(models.Model):
     report_details = fields.Text(string="Detalhamento por Aluno")
 
     def action_generate_report(self):
-
-        lessons = self.env['studio.lesson'].search([
-            ('state', '=', 'done')
-        ])
-
+        lessons = self.env['studio.lesson'].search([('state', 'in', ['done', 'cancel'])])
         total = 0
         details = []
 
         for lesson in lessons:
-            cost = lesson.class_id.credit_cost
-
             for student in lesson.attendance_ids:
                 if student.cost_center_id == self.cost_center_id:
-                    total += cost
-                    details.append(f"{student.name} - {lesson.date}")
+                    # Fatura se: Aula concluída OU Cancelamento tardio
+                    if lesson.state == 'done' or lesson.is_late_cancel:
+                        total += lesson.class_id.credit_cost
+                        status_str = "Presença" if lesson.state == 'done' else "Late Cancel (Pago)"
+                        details.append(f"{student.name} - {lesson.date} ({status_str})")
 
         self.total_consumption = total
         self.report_details = "\n".join(details)

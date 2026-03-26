@@ -88,41 +88,55 @@
                            decoration-info="state == 'draft'" 
                            decoration-success="state == 'done'" 
                            decoration-danger="state == 'cancel'"/>
+
+                    <button name="action_cancel_lesson" string="Cancelar" 
+                           type="object" icon="fa-times-circle" 
+                           invisible="state == 'cancel'"
+                           confirm="Tem certeza que deseja cancelar esta aula?"/>
                 </list>
             </field>
         </record>
 
-        <record id="view_studio_lesson_form" model="ir.ui.view">
-            <field name="name">studio.lesson.form</field>
-            <field name="model">studio.lesson</field>
-            <field name="arch" type="xml">
-                <form>
-                    <header>
-                        <button name="action_confirm_attendance" string="Confirmar Presença (Check-in)" 
-                                type="object" class="oe_highlight" invisible="state != 'draft'"/>
+       <record id="view_studio_lesson_form" model="ir.ui.view">
+    <field name="name">studio.lesson.form</field>
+    <field name="model">studio.lesson</field>
+    <field name="arch" type="xml">
+        <form>
+            <header>
+                <button name="action_confirm_attendance" string="Confirmar Presença (Check-in)" 
+                        type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                
+                <button name="action_cancel_lesson" string="Cancelar Aula" 
+                        type="object" invisible="state != 'draft'"/>
                         
-                        <button name="action_cancel_lesson" string="Cancelar Aula" 
-                                type="object" invisible="state != 'draft'"/>
-                                
-                        <field name="state" widget="statusbar"/>
-                    </header>
-                    <sheet>
-                        <group>
-                            <field name="class_id"/>
-                            <field name="date"/>
-                        </group>
-                        <separator string="Alunos que compareceram"/>
-                        <field name="attendance_ids">
-                            <list>
-                                <field name="name"/>
-                                <field name="credit_count"/>
-                                <field name="credit_expiration"/>
-                            </list>
-                        </field>
-                    </sheet>
-                </form>
-            </field>
-        </record>
+                <field name="state" widget="statusbar"/>
+            </header>
+            <sheet>
+                <group>
+                    <group>
+                        <field name="class_id"/>
+                        <field name="date"/>
+                    </group>
+                    <group>
+                        <field name="is_late_cancel" 
+                               invisible="state != 'cancel'" 
+                               readonly="1"
+                               decoration-danger="is_late_cancel == True"/>
+                    </group>
+                </group>
+
+                <separator string="Alunos que compareceram"/>
+                <field name="attendance_ids">
+                    <list>
+                        <field name="name"/>
+                        <field name="credit_count"/>
+                        <field name="credit_expiration"/>
+                    </list>
+                </field>
+            </sheet>
+        </form>
+    </field>
+</record>
         
 <!--View de Faturamento Corporativo (Relatórios)-->
 
