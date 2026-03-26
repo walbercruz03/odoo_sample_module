@@ -131,24 +131,36 @@ class StudioBilling(models.Model):
     _description = 'Base para Faturamento Corporativo'
 
     company_id = fields.Many2one('res.company', string="Empresa", required=True)
-    period = fields.Char(string="Período (MM/AAAA)", required=True)
+    # Substituindo o Char por Date para permitir o intervalo
+    date_from = fields.Date(string="Data Início", required=True)
+    date_to = fields.Date(string="Data Fim", required=True)
+    
     cost_center_id = fields.Many2one('account.analytic.account', string="Centro de Custo")
     total_consumption = fields.Float(string="Total de Créditos Consumidos")
     report_details = fields.Text(string="Detalhamento por Aluno")
 
     def action_generate_report(self):
-        lessons = self.env['studio.lesson'].search([('state', 'in', ['done', 'cancel'])])
+        # Criamos um domínio que filtra pelo intervalo de datas e status
+        domain = [
+            ('state', 'in', ['done', 'cancel']),
+            ('date', '>=', self.date_from),
+            ('date', '<=', self.date_to)
+        ]
+        
+        lessons = self.env['studio.lesson'].search(domain)
         total = 0
         details = []
 
         for lesson in lessons:
             for student in lesson.attendance_ids:
-                if student.cost_center_id == self.cost_center_id:
+                # Filtra pelo centro de custo do aluno se houver um definido no relatório
+                if not self.cost_center_id or student.cost_center_id == self.cost_center_id:
                     # Fatura se: Aula concluída OU Cancelamento tardio
                     if lesson.state == 'done' or lesson.is_late_cancel:
                         total += lesson.class_id.credit_cost
                         status_str = "Presença" if lesson.state == 'done' else "Late Cancel (Pago)"
-                        details.append(f"{student.name} - {lesson.date} ({status_str})")
+                        date_str = lesson.date.strftime('%d/%m/%Y %H:%M')
+                        details.append(f"{student.name} - {date_str} ({status_str})")
 
         self.total_consumption = total
-        self.report_details = "\n".join(details)
+        self.report_details = "\n".join(details) if details else "Nenhum registro encontrado para este período."
