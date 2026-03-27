@@ -45,17 +45,35 @@ class StudioClass(models.Model):
         for rec in self:
             rec.seats_occupied = len(rec.registration_ids.filtered(lambda r: r.state == 'confirmed'))
 
+# =================================================================
+#  REGISTRO: TURMA
+# =================================================================            
+
 class StudioClassRegistration(models.Model):
     _name = 'studio.class.registration'
     _description = 'Registro de Inscrição'
     _order = 'sequence, id'
 
-    _sql_constraints = [('unique_student_class', 'unique(class_id, student_id)', 'O aluno já está inscrito!')]
+    sql_constraints = [
+        ('unique_student_class', 'unique(class_id, student_id)', 'O aluno já está inscrito!')
+    ]
 
     sequence = fields.Integer(default=10)
     class_id = fields.Many2one('studio.class', string="Turma", required=True)
     student_id = fields.Many2one('res.partner', string="Aluno", domain=[('is_student', '=', True)], required=True, ondelete='cascade')
-    state = fields.Selection([('confirmed', 'Confirmado'), ('waiting', 'Lista de Espera')], string="Status", compute="_compute_state", store=True)
+    state = fields.Selection([('confirmed', 'Confirmado'), ('waiting', 'Lista de Espera')], string="Status", compute="_compute_state")
+
+    @api.constrains('student_id', 'class_id')
+    def _check_unique_registration(self):
+        for rec in self:
+            # Busca se existe OUTRO registro (id diferente) com o mesmo aluno e turma
+            duplicates = self.env['studio.class.registration'].search([
+                ('id', '!=', rec.id),
+                ('student_id', '=', rec.student_id.id),
+                ('class_id', '=', rec.class_id.id)
+            ])
+            if duplicates:
+                raise ValidationError("Atenção! O aluno %s já está inscrito nesta turma." % rec.student_id.name)
 
     @api.depends('sequence', 'class_id.capacity')
     def _compute_state(self):
