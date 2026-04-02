@@ -1,6 +1,6 @@
 # Projeto Clinica
 
-## Beneficios!
+
 
 # User story
 
