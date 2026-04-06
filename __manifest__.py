@@ -22,6 +22,7 @@
         "views/sample_model_view.xml", 
         "views/app.xml",
         "views/aluno_view.xml",
+        "views/clinica_view.xml",
     ],
     "assets": {},
     "qweb": [],

@@ -1,7 +1,9 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 
-
-access_studio_class_group_user,Turma - Grupo Usuário,model_studio_class,base.group_user,1,1,1,1
-access_studio_lesson_group_user,Aula - Grupo Usuário,model_studio_lesson,base.group_user,1,1,1,1
-access_studio_billing_group_user,Faturamento - Grupo Usuário,model_studio_billing,base.group_user,1,1,1,1
-access_studio_class_registration_user,Inscrição Turma - Usuário,model_studio_class_registration,base.group_user,1,1,1,1
+access_clinica_perfil_cliente_user,Perfil Cliente - Usuário,model_clinica_perfil_cliente,base.group_user,1,1,1,1
+access_clinica_produto_user,Produto - Usuário,model_clinica_produto,base.group_user,1,1,1,1
+access_clinica_preco_base_user,Preço Base - Usuário,model_clinica_preco_base,base.group_user,1,1,1,1
+access_clinica_regra_preco_user,Regra Preço - Usuário,model_clinica_regra_preco,base.group_user,1,1,1,1
+access_clinica_combinacao_produto_user,Combinação Produto - Usuário,model_clinica_combinacao_produto,base.group_user,1,1,1,1
+access_clinica_pedido_user,Pedido - Usuário,model_clinica_pedido,base.group_user,1,1,1,1
+access_clinica_item_pedido_user,Item Pedido - Usuário,model_clinica_item_pedido,base.group_user,1,1,1,1

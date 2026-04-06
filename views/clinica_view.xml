@@ -1,0 +1,296 @@
+<?xml version="1.0"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- 1. PERFIL DO CLIENTE                                          -->
+        <!-- ============================================================ -->
+
+        <record id="view_perfil_cliente_form" model="ir.ui.view">
+            <field name="name">clinica.perfil.cliente.form</field>
+            <field name="model">clinica.perfil.cliente</field>
+            <field name="arch" type="xml">
+                <form string="Perfil do Cliente">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_perfil_cliente" model="ir.actions.act_window">
+            <field name="name">Perfis de Cliente</field>
+            <field name="res_model">clinica.perfil.cliente</field>
+            <field name="view_mode">form</field>
+        </record>
+
+        <menuitem
+            id="menu_clinica_root"
+            name="Clínica"
+            sequence="10"/>
+
+        <menuitem
+            id="menu_clinica_config"
+            name="Configurações"
+            parent="menu_clinica_root"
+            sequence="90"/>
+
+        <menuitem
+            id="menu_perfil_cliente"
+            name="Perfis de Cliente"
+            parent="menu_clinica_config"
+            action="action_perfil_cliente"
+            sequence="10"/>
+
+        <!-- ============================================================ -->
+        <!-- 2. CLIENTE (res.partner)                                      -->
+        <!-- ============================================================ -->
+
+        <record id="view_partner_form_clinica" model="ir.ui.view">
+            <field name="name">res.partner.form.clinica</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='function']" position="after">
+                    <field name="primeiro_atendimento"/>
+                    <field name="vip"/>
+                    <field name="convenio"/>
+                    <field name="perfil_cliente_id"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 3. PRODUTO                                                     -->
+        <!-- ============================================================ -->
+
+        <record id="view_produto_form" model="ir.ui.view">
+            <field name="name">clinica.produto.form</field>
+            <field name="model">clinica.produto</field>
+            <field name="arch" type="xml">
+                <form string="Produto/Serviço">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="tipo_produto"/>
+                            <field name="active"/>
+                        </group>
+                        <notebook>
+                            <page string="Preços Base">
+                                <field name="preco_base_ids">
+                                    <tree editable="bottom">
+                                        <field name="valor"/>
+                                        <field name="data_inicio"/>
+                                        <field name="data_fim"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Regras de Preço">
+                                <field name="regra_preco_ids">
+                                    <tree editable="bottom">
+                                        <field name="perfil_cliente_id"/>
+                                        <field name="quantidade_min"/>
+                                        <field name="tipo_regra"/>
+                                        <field name="desconto"/>
+                                        <field name="data_inicio"/>
+                                        <field name="data_fim"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_produto" model="ir.actions.act_window">
+            <field name="name">Produtos e Serviços</field>
+            <field name="res_model">clinica.produto</field>
+            <field name="view_mode">form</field>
+        </record>
+
+        <menuitem
+            id="menu_produto"
+            name="Produtos e Serviços"
+            parent="menu_clinica_root"
+            action="action_produto"
+            sequence="20"/>
+
+        <!-- ============================================================ -->
+        <!-- 4. PREÇO BASE                                                 -->
+        <!-- ============================================================ -->
+
+        <record id="view_preco_base_form" model="ir.ui.view">
+            <field name="name">clinica.preco.base.form</field>
+            <field name="model">clinica.preco.base</field>
+            <field name="arch" type="xml">
+                <form string="Preço Base">
+                    <sheet>
+                        <group>
+                            <field name="produto_id"/>
+                            <field name="valor"/>
+                            <field name="data_inicio"/>
+                            <field name="data_fim"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_preco_base" model="ir.actions.act_window">
+            <field name="name">Preços Base</field>
+            <field name="res_model">clinica.preco.base</field>
+            <field name="view_mode">form</field>
+        </record>
+
+        <menuitem
+            id="menu_preco_base"
+            name="Preços Base"
+            parent="menu_clinica_config"
+            action="action_preco_base"
+            sequence="20"/>
+
+        <!-- ============================================================ -->
+        <!-- 5. REGRA DE PREÇO                                            -->
+        <!-- ============================================================ -->
+
+        <record id="view_regra_preco_form" model="ir.ui.view">
+            <field name="name">clinica.regra.preco.form</field>
+            <field name="model">clinica.regra.preco</field>
+            <field name="arch" type="xml">
+                <form string="Regra de Preço">
+                    <sheet>
+                        <group>
+                            <field name="produto_id"/>
+                            <field name="perfil_cliente_id"/>
+                            <field name="quantidade_min"/>
+                            <field name="tipo_regra"/>
+                            <field name="desconto"/>
+                            <field name="data_inicio"/>
+                            <field name="data_fim"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_regra_preco" model="ir.actions.act_window">
+            <field name="name">Regras de Preço</field>
+            <field name="res_model">clinica.regra.preco</field>
+            <field name="view_mode">form</field>
+        </record>
+
+        <menuitem
+            id="menu_regra_preco"
+            name="Regras de Preço"
+            parent="menu_clinica_config"
+            action="action_regra_preco"
+            sequence="30"/>
+
+        <!-- ============================================================ -->
+        <!-- 6. COMBINAÇÃO DE PRODUTO                                      -->
+        <!-- ============================================================ -->
+
+        <record id="view_combinacao_produto_form" model="ir.ui.view">
+            <field name="name">clinica.combinacao.produto.form</field>
+            <field name="model">clinica.combinacao.produto</field>
+            <field name="arch" type="xml">
+                <form string="Combinação de Produto">
+                    <sheet>
+                        <group>
+                            <field name="produto_principal_id"/>
+                            <field name="produto_relacionado_id"/>
+                            <field name="tipo_desconto"/>
+                            <field name="valor_final"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_combinacao_produto" model="ir.actions.act_window">
+            <field name="name">Combinações de Produto</field>
+            <field name="res_model">clinica.combinacao.produto</field>
+            <field name="view_mode">form</field>
+        </record>
+
+        <menuitem
+            id="menu_combinacao_produto"
+            name="Combinações de Produto"
+            parent="menu_clinica_config"
+            action="action_combinacao_produto"
+            sequence="40"/>
+
+        <!-- ============================================================ -->
+        <!-- 7. PEDIDO                                                     -->
+        <!-- ============================================================ -->
+
+        <record id="view_pedido_form" model="ir.ui.view">
+            <field name="name">clinica.pedido.form</field>
+            <field name="model">clinica.pedido</field>
+            <field name="arch" type="xml">
+                <form string="Pedido">
+                    <sheet>
+                        <group>
+                            <field name="cliente_id"/>
+                            <field name="data_hora"/>
+                            <field name="valor_total" readonly="1"/>
+                        </group>
+                        <notebook>
+                            <page string="Itens do Pedido">
+                                <field name="item_ids">
+                                    <tree editable="bottom">
+                                        <field name="produto_id"/>
+                                        <field name="quantidade"/>
+                                        <field name="preco_unitario" readonly="1"/>
+                                        <field name="desconto_aplicado" readonly="1"/>
+                                        <field name="valor_final" readonly="1"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_pedido" model="ir.actions.act_window">
+            <field name="name">Pedidos</field>
+            <field name="res_model">clinica.pedido</field>
+            <field name="view_mode">form</field>
+        </record>
+
+        <menuitem
+            id="menu_pedido"
+            name="Pedidos"
+            parent="menu_clinica_root"
+            action="action_pedido"
+            sequence="30"/>
+
+        <!-- ============================================================ -->
+        <!-- 8. ITEM DO PEDIDO                                            -->
+        <!-- ============================================================ -->
+
+        <record id="view_item_pedido_form" model="ir.ui.view">
+            <field name="name">clinica.item.pedido.form</field>
+            <field name="model">clinica.item.pedido</field>
+            <field name="arch" type="xml">
+                <form string="Item do Pedido">
+                    <sheet>
+                        <group>
+                            <field name="pedido_id"/>
+                            <field name="produto_id"/>
+                            <field name="quantidade"/>
+                            <field name="preco_unitario" readonly="1"/>
+                            <field name="desconto_aplicado" readonly="1"/>
+                            <field name="valor_final" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>
