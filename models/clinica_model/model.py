@@ -104,6 +104,8 @@ class PrecoBase(models.Model):
         return self.env.ref('clinica.report_tabela_precos').report_action(registros_vigentes)
 
 
+
+
 # ============================================================
 # 5. REGRA DE PREÇO
 # ============================================================
