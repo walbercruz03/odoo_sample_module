@@ -7,3 +7,4 @@ access_clinica_regra_preco_user,Regra Preço - Usuário,model_clinica_regra_prec
 access_clinica_combinacao_produto_user,Combinação Produto - Usuário,model_clinica_combinacao_produto,base.group_user,1,1,1,1
 access_clinica_pedido_user,Pedido - Usuário,model_clinica_pedido,base.group_user,1,1,1,1
 access_clinica_item_pedido_user,Item Pedido - Usuário,model_clinica_item_pedido,base.group_user,1,1,1,1
+access_clinica_relatorio_preco_wizard,Relatório Preço Wizard,model_clinica_relatorio_preco_wizard,base.group_user,1,1,1,1

@@ -2,6 +2,56 @@
 <odoo>
     <data>
 
+                              <!-- Dashboard-->
+        <record id="view_clinica_dashboard" model="ir.ui.view">
+            <field name="name">clinica.dashboard.form</field>
+            <field name="model">clinica.perfil.cliente</field>
+            <field name="arch" type="xml">
+                <form string="Dashboard" create="false" edit="false" delete="false" save="false">
+                    <sheet>
+                        <div style="
+                            display: flex; 
+                            flex-direction: column; 
+                            align-items: center; 
+                            justify-content: center; 
+                            height: 80vh; 
+                            width: 100%; 
+                            margin: 0 auto;
+                            text-align: center;">
+                            
+                            <div style="max-width: 800px;"> <h1 style="color: #714B67; font-weight: bold; font-size: 4rem; margin-bottom: 10px;">
+                                    Sistema Clínica
+                                </h1>
+                                
+                                <h3 class="text-muted" style="font-size: 1.5rem; font-style: italic; margin-bottom: 20px;">
+                                    Bem-vindo!
+                                </h3>
+                                
+                                <div style="height: 2px; background-color: #714B67; width: 100px; margin: 20px auto; opacity: 0.3;"></div>
+                                
+                                <p style="font-size: 1.3rem; color: #666;">
+                                    Selecione uma opção no menu superior para começar.
+                                </p>
+                            </div>
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_clinica_dashboard" model="ir.actions.act_window">
+            <field name="name">Boas-vindas</field>
+            <field name="res_model">clinica.perfil.cliente</field>
+            <field name="view_mode">form</field>
+            <field name="target">current</field>
+            <field name="res_id">0</field> 
+            <field name="view_id" ref="view_clinica_dashboard"/>
+        </record>
+
+        <menuitem id="menu_clinica_root" 
+          name="Clínica" 
+          action="action_clinica_dashboard" 
+          sequence="1"/>
         <!-- ============================================================ -->
         <!-- 1. PERFIL DO CLIENTE                                          -->
         <!-- ============================================================ -->
@@ -76,9 +126,26 @@
             </field>
         </record>
 
+        <record id="action_clientes_clinica" model="ir.actions.act_window">
+            <field name="name">Clientes</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">list,form,kanban</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Cadastre seu primeiro cliente!
+                </p>
+            </field>
+        </record>
+
+        <menuitem
+            id="menu_clientes_clinica"
+            name="Clientes"
+            parent="menu_clinica_root"
+            action="action_clientes_clinica"
+            sequence="5"/>
+
 
         
-
         <!-- ============================================================ -->
         <!-- 3. PRODUTO                                                     -->
         <!-- ============================================================ -->
@@ -174,10 +241,23 @@
             </field>
         </record>
 
+        <record id="view_preco_base_list" model="ir.ui.view">
+            <field name="name">clinica.preco.base.list</field>
+            <field name="model">clinica.preco.base</field>
+            <field name="arch" type="xml">
+                <list string="Preços Base">
+                    <field name="produto_id"/>
+                    <field name="valor"/>
+                    <field name="data_inicio"/>
+                    <field name="data_fim"/>
+                </list>
+            </field>
+        </record>
+
         <record id="action_preco_base" model="ir.actions.act_window">
             <field name="name">Preços Base</field>
             <field name="res_model">clinica.preco.base</field>
-            <field name="view_mode">form</field>
+            <field name="view_mode">list,form</field>
         </record>
 
         <menuitem
@@ -362,5 +442,97 @@
             </field>
         </record>
 
+
+
+    <record id="action_report_tabela_precos" model="ir.actions.report">
+        <field name="name">Tabela de Preços por Período</field>
+        <field name="model">clinica.relatorio.preco.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">clinica.report_tabela_precos_template</field>
+        <field name="report_file">clinica.report_tabela_precos_template</field>
+        <field name="print_report_name">'Tabela_Precos'</field>
+        <field name="binding_model_id" eval="False"/>
+    </record>
+
+        <!-- ============================================================ -->
+        <!-- 9. Relatorio de preços                                           -->
+        <!-- ============================================================ -->
+
+
+    <record id="action_report_tabela_precos" model="ir.actions.report">
+        <field name="name">Tabela de Preços por Período</field>
+        <field name="model">clinica.relatorio.preco.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odoo_sample_module.report_tabela_precos_template</field>
+        <field name="report_file">odoo_sample_module.report_tabela_precos_template</field>
+        <field name="print_report_name">'Tabela_Precos'</field>
+        <field name="binding_model_id" eval="False"/>
+    </record>
+
+    <template id="report_tabela_precos_template">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <div class="text-center">
+                        <h2>Tabela de Preços e Produtos</h2>
+                        <p>Período: <span t-esc="form.get('data_inicio')"/> até <span t-esc="form.get('data_fim')"/></p>
+                    </div>
+
+                    <table class="table table-sm table-striped mt-4">
+                        <thead>
+                            <tr>
+                                <th>Produto/Serviço</th>
+                                <th class="text-right">Preço Base</th>
+                                <th>Início Vigência</th>
+                                <th>Fim Vigência</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="request.env['clinica.preco.base'].browse(precos)" t-as="line">
+                                <tr>
+                                    <td><span t-field="line.produto_id.name"/></td>
+                                    <td class="text-right">
+                                        R$ <span t-field="line.valor"/>
+                                    </td>
+                                    <td><span t-field="line.data_inicio"/></td>
+                                    <td><span t-field="line.data_fim"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="view_relatorio_preco_wizard_form" model="ir.ui.view">
+        <field name="name">clinica.relatorio.preco.wizard.form</field>
+        <field name="model">clinica.relatorio.preco.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="data_inicio"/>
+                    <field name="data_fim"/>
+                </group>
+                <footer>
+                    <button name="imprimir_relatorio" string="Gerar PDF" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_relatorio_preco_wizard" model="ir.actions.act_window">
+        <field name="name">Gerar Tabela de Preços</field>
+        <field name="res_model">clinica.relatorio.preco.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_relatorio_precos"
+            name="Relatório de Preços"
+            parent="menu_clinica_config" 
+            action="action_relatorio_preco_wizard"
+            sequence="100"/>>
     </data>
 </odoo>

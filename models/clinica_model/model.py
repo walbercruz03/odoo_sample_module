@@ -297,30 +297,84 @@ class ItemPedido(models.Model):
             item.preco_unitario = preco_base.valor if preco_base else 0.0
 
 
-    @api.depends('produto_id', 'quantidade', 'preco_unitario', 'pedido_id.cliente_id.perfil_cliente_id')
+    @api.depends('produto_id', 'quantidade', 'preco_unitario', 'pedido_id.cliente_id.perfil_cliente_id', 'pedido_id.item_ids.produto_id')
     def _compute_desconto_aplicado(self):
         hoje = fields.Date.today()
         for item in self:
             desconto = 0.0
-            perfil_id = item.pedido_id.cliente_id.perfil_cliente_id.id
-            if perfil_id and item.preco_unitario:
-                regra = self.env['clinica.regra.preco'].search([
-                    ('produto_id', '=', item.produto_id.id),
-                    ('perfil_cliente_id', '=', perfil_id),
-                    ('quantidade_min', '<=', item.quantidade),
-                    ('data_inicio', '<=', hoje),
-                    '|',
-                    ('data_fim', '=', False),
-                    ('data_fim', '>=', hoje),
-                ], order='quantidade_min desc', limit=1)
-                if regra:
-                    if regra.tipo_regra == 'percentual':
-                        desconto = item.preco_unitario * (regra.desconto / 100)
-                    else:
-                        desconto = regra.desconto
-            item.desconto_aplicado = desconto
+            
+            # 1. TENTA APLICAR A REGRA DE COMBINAÇÃO (BUNDLE)
+            produtos_no_pedido = item.pedido_id.item_ids.mapped('produto_id').ids
+            combinacao = self.env['clinica.combinacao.produto'].search([
+                ('produto_principal_id', '=', item.produto_id.id),
+                ('produto_relacionado_id', 'in', produtos_no_pedido)
+            ], limit=1)
+
+            if combinacao:
+                # Calculamos a diferença. 
+                # Se o preço é 10 e o valor final da combinação é 5, o desconto deve ser 5.
+                # Usamos abs() para garantir que o número seja sempre positivo
+                desconto = abs(item.preco_unitario - combinacao.valor_final)
+            
+            # 2. SE NÃO HOUVER COMBINAÇÃO, USA A REGRA DE PERFIL
+            else:
+                perfil_id = item.pedido_id.cliente_id.perfil_cliente_id.id
+                if perfil_id and item.preco_unitario:
+                    regra = self.env['clinica.regra.preco'].search([
+                        ('produto_id', '=', item.produto_id.id),
+                        ('perfil_cliente_id', '=', perfil_id),
+                        ('quantidade_min', '<=', item.quantidade),
+                        ('data_inicio', '<=', hoje),
+                        '|',
+                        ('data_fim', '=', False),
+                        ('data_fim', '>=', hoje),
+                    ], order='quantidade_min desc', limit=1)
+                    if regra:
+                        if regra.tipo_regra == 'percentual':
+                            desconto = item.preco_unitario * (regra.desconto / 100)
+                        else:
+                            desconto = regra.desconto
+            
+            # Garantimos que o desconto é positivo
+            item.desconto_aplicado = abs(desconto)
 
     @api.depends('preco_unitario', 'quantidade', 'desconto_aplicado')
     def _compute_valor_final(self):
         for item in self:
-            item.valor_final = (item.preco_unitario - item.desconto_aplicado) * item.quantidade
+            # A CONTA É: PREÇO - DESCONTO
+            # 10.00 - 5.00 = 5.00 (Valor de uma unidade)
+            valor_unidade_com_desconto = item.preco_unitario - item.desconto_aplicado
+            item.valor_final = valor_unidade_com_desconto * item.quantidade
+
+
+class RelatorioPrecoWizard(models.TransientModel):
+    _name = 'clinica.relatorio.preco.wizard'
+    _description = 'Wizard de Relatório de Preços'
+
+    data_inicio = fields.Date(string='Data Início', required=True, default=fields.Date.today)
+    data_fim = fields.Date(string='Data Fim', required=True, default=fields.Date.today)
+
+    def imprimir_relatorio(self):
+            self.ensure_one() # Segurança para garantir que rodamos em um único wizard
+            
+            # Busca os preços vigentes no período
+            precos = self.env['clinica.preco.base'].search([
+                ('data_inicio', '<=', self.data_fim),
+                '|',
+                ('data_fim', '=', False),
+                ('data_fim', '>=', self.data_inicio),
+            ], order='produto_id, data_inicio desc')
+
+            # Preparação dos dados para o QWeb
+            data = {
+                'ids': self.ids,
+                'model': self._name,
+                'form': {
+                    'data_inicio': self.data_inicio,
+                    'data_fim': self.data_fim,
+                },
+                'precos': precos.ids, # Passamos os IDs dos preços encontrados
+            }
+            
+            # O segredo: usamos o ID externo do seu XML
+            return self.env.ref('odoo_sample_module.action_report_tabela_precos').report_action(self, data=data)
