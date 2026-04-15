@@ -7,8 +7,11 @@
 - Como administrador da clínica,
 quero configurar preços dinâmicos por volume, período e perfil do cliente,
 para aumentar o faturamento e melhorar a experiência de compra.
+#
 
+![](img/clinica.png)
 
+#
 # Impacto
 
 - Aumento do ticket médio por meio de vendas combinadas

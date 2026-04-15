@@ -3,6 +3,15 @@ from datetime import timedelta
 from odoo.exceptions import ValidationError 
 
 
+class ClinicaDashboard(models.TransientModel):
+    _name = 'clinica.dashboard'
+    _description = 'Painel Visual de Boas-vindas'
+
+    
+    #campo de texto se quiser exibir mensagens dinâmicas.
+    name = fields.Char(string="Título", default="Dashboard Clínica")
+
+
 # ============================================================
 # 1. PERFIL DO CLIENTE
 # ============================================================
@@ -241,6 +250,11 @@ class Pedido(models.Model):
                             f'também precisa estar no pedido.'
                         )
 
+    def action_imprimir_comprovante(self):
+            # Garante que o usuário está olhando apenas um registro
+            self.ensure_one()
+            # Chama a ação definida no seu XML
+            return self.env.ref('odoo_sample_module.action_report_comprovante_pedido').report_action(self)
 
 # ============================================================
 # 8. ITEM DO PEDIDO
@@ -357,6 +371,9 @@ class RelatorioPrecoWizard(models.TransientModel):
     def imprimir_relatorio(self):
             self.ensure_one() # Segurança para garantir que rodamos em um único wizard
             
+            data_inicio_fmt = self.data_inicio.strftime('%d/%m/%Y')
+            data_fim_fmt = self.data_fim.strftime('%d/%m/%Y')
+
             # Busca os preços vigentes no período
             precos = self.env['clinica.preco.base'].search([
                 ('data_inicio', '<=', self.data_fim),
@@ -365,16 +382,15 @@ class RelatorioPrecoWizard(models.TransientModel):
                 ('data_fim', '>=', self.data_inicio),
             ], order='produto_id, data_inicio desc')
 
-            # Preparação dos dados para o QWeb
+            # 2. Passa as strings já formatadas para o dicionário 'data'
             data = {
                 'ids': self.ids,
                 'model': self._name,
                 'form': {
-                    'data_inicio': self.data_inicio,
-                    'data_fim': self.data_fim,
+                    'data_inicio': data_inicio_fmt, 
+                    'data_fim': data_fim_fmt,
                 },
-                'precos': precos.ids, # Passamos os IDs dos preços encontrados
+                'precos': precos.ids,
             }
             
-            # O segredo: usamos o ID externo do seu XML
             return self.env.ref('odoo_sample_module.action_report_tabela_precos').report_action(self, data=data)

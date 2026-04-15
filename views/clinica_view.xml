@@ -3,20 +3,21 @@
     <data>
 
                               <!-- Dashboard-->
+
         <record id="view_clinica_dashboard" model="ir.ui.view">
             <field name="name">clinica.dashboard.form</field>
-            <field name="model">clinica.perfil.cliente</field>
+            <field name="model">clinica.dashboard</field>
             <field name="arch" type="xml">
                 <form string="Dashboard" create="false" edit="false" delete="false" save="false">
-                    <sheet>
                         <div style="
                             display: flex; 
                             flex-direction: column; 
                             align-items: center; 
                             justify-content: center; 
-                            height: 80vh; 
-                            width: 100%; 
-                            margin: 0 auto;
+                            min-height: 90vh; 
+                            width: 100vw;     
+                            margin: 0;
+                            padding: 0;
                             text-align: center;">
                             
                             <div style="max-width: 800px;"> <h1 style="color: #714B67; font-weight: bold; font-size: 4rem; margin-bottom: 10px;">
@@ -34,17 +35,15 @@
                                 </p>
                             </div>
                         </div>
-                    </sheet>
                 </form>
             </field>
         </record>
 
         <record id="action_clinica_dashboard" model="ir.actions.act_window">
             <field name="name">Boas-vindas</field>
-            <field name="res_model">clinica.perfil.cliente</field>
+            <field name="res_model">clinica.dashboard</field>
             <field name="view_mode">form</field>
             <field name="target">current</field>
-            <field name="res_id">0</field> 
             <field name="view_id" ref="view_clinica_dashboard"/>
         </record>
 
@@ -52,6 +51,7 @@
           name="Clínica" 
           action="action_clinica_dashboard" 
           sequence="1"/>
+
         <!-- ============================================================ -->
         <!-- 1. PERFIL DO CLIENTE                                          -->
         <!-- ============================================================ -->
@@ -90,11 +90,7 @@
             </field>
         </record>
 
-        <menuitem
-            id="menu_clinica_root"
-            name="Clínica"
-            sequence="10"/>
-
+      
         <menuitem
             id="menu_clinica_config"
             name="Configurações"
@@ -293,10 +289,26 @@
             </field>
         </record>
 
+        <record id="view_regra_preco_list" model="ir.ui.view">
+            <field name="name">clinica.regra.preco.list</field>
+            <field name="model">clinica.regra.preco</field>
+            <field name="arch" type="xml">
+                <list string="Regras de Preço">
+                    <field name="produto_id"/>
+                    <field name="perfil_cliente_id"/>
+                    <field name="quantidade_min"/>
+                    <field name="tipo_regra"/>
+                    <field name="desconto"/>
+                    <field name="data_inicio"/>
+                    <field name="data_fim"/>
+                </list>
+            </field>
+        </record>
+
         <record id="action_regra_preco" model="ir.actions.act_window">
             <field name="name">Regras de Preço</field>
             <field name="res_model">clinica.regra.preco</field>
-            <field name="view_mode">form</field>
+            <field name="view_mode">list,form</field>
         </record>
 
         <menuitem
@@ -385,6 +397,13 @@
                                 </field>
                             </page>
                         </notebook>
+
+                        <header>
+                            <button name="action_imprimir_comprovante" 
+                                    string="Imprimir Comprovante" 
+                                    type="object" 
+                                    class="btn-primary"/>
+                        </header>
                     </sheet>
                 </form>
             </field>
@@ -411,6 +430,7 @@
                 </p>
             </field>
         </record>
+
 
         <menuitem
             id="menu_pedido"
@@ -444,15 +464,6 @@
 
 
 
-    <record id="action_report_tabela_precos" model="ir.actions.report">
-        <field name="name">Tabela de Preços por Período</field>
-        <field name="model">clinica.relatorio.preco.wizard</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">clinica.report_tabela_precos_template</field>
-        <field name="report_file">clinica.report_tabela_precos_template</field>
-        <field name="print_report_name">'Tabela_Precos'</field>
-        <field name="binding_model_id" eval="False"/>
-    </record>
 
         <!-- ============================================================ -->
         <!-- 9. Relatorio de preços                                           -->
@@ -494,8 +505,13 @@
                                     <td class="text-right">
                                         R$ <span t-field="line.valor"/>
                                     </td>
-                                    <td><span t-field="line.data_inicio"/></td>
-                                    <td><span t-field="line.data_fim"/></td>
+                                    <td>
+                                        <span t-field="line.data_inicio" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </td>
+
+                                    <td>
+                                        <span t-field="line.data_fim" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </td>
                                 </tr>
                             </t>
                         </tbody>
@@ -533,6 +549,54 @@
             name="Relatório de Preços"
             parent="menu_clinica_config" 
             action="action_relatorio_preco_wizard"
-            sequence="100"/>>
+            sequence="100"/>
+
+              <!-- Comprovante de Venda!-->
+
+    <record id="action_report_comprovante_pedido" model="ir.actions.report">
+        <field name="name">Comprovante de Venda</field>
+        <field name="model">clinica.pedido</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odoo_sample_module.report_comprovante_pedido</field>
+        <field name="report_file">odoo_sample_module.report_comprovante_pedido</field>
+        <field name="print_report_name">'Comprovante - %s' % (object.cliente_id.name)</field>
+    </record>
+
+   <template id="report_comprovante_pedido">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Comprovante de Venda</h2>
+                        <p>Cliente: <span t-field="doc.cliente_id.name"/></p>
+                        <p>Data: <span t-field="doc.data_hora" t-options='{"format": "dd/MM/yyyy HH:mm"}'/></p>
+                        
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th class="text-center">Qtd</th>
+                                    <th class="text-right">Valor Final</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="doc.item_ids" t-as="item">
+                                    <tr>
+                                        <td><span t-field="item.produto_id.name"/></td>
+                                        <td class="text-center"><span t-field="item.quantidade"/></td>
+                                        <td class="text-right"><span t-field="item.valor_final"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                        <p class="text-right">
+                            <strong>Total: <span t-field="doc.valor_total"/></strong>
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
     </data>
 </odoo>
