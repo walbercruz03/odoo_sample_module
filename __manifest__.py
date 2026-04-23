@@ -23,7 +23,11 @@
         "views/app.xml",
         "views/clinica_view.xml"
     ],
-    "assets": {},
+    "assets": {
+        "web.assets_backend": [
+        "odoo_sample_module/static/src/js/chatbot.js",
+    ],
+    },
     "qweb": [],
     "images": [],
     "installable": True,

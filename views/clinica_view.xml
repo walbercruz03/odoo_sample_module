@@ -4,40 +4,49 @@
 
                               <!-- Dashboard-->
 
-        <record id="view_clinica_dashboard" model="ir.ui.view">
-            <field name="name">clinica.dashboard.form</field>
-            <field name="model">clinica.dashboard</field>
-            <field name="arch" type="xml">
-                <form string="Dashboard" create="false" edit="false" delete="false" save="false">
-                        <div style="
-                            display: flex; 
-                            flex-direction: column; 
-                            align-items: center; 
-                            justify-content: center; 
-                            min-height: 90vh; 
-                            width: 100vw;     
-                            margin: 0;
-                            padding: 0;
-                            text-align: center;">
+            <record id="view_clinica_dashboard" model="ir.ui.view">
+                <field name="name">clinica.dashboard.form</field>
+                <field name="model">clinica.dashboard</field>
+                <field name="arch" type="xml">
+                    <form string="Dashboard" create="false" edit="false" delete="false" duplicate="false">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background-color: white; z-index: 1;">
                             
-                            <div style="max-width: 800px;"> <h1 style="color: #714B67; font-weight: bold; font-size: 4rem; margin-bottom: 10px;">
+                            <div style="max-width: 800px; width: 100%; text-align: center;"> 
+                                <h1 style="color: #714B67; font-weight: bold; font-size: 4rem; margin-bottom: 10px;">
                                     Sistema Clínica
                                 </h1>
-                                
                                 <h3 class="text-muted" style="font-size: 1.5rem; font-style: italic; margin-bottom: 20px;">
                                     Bem-vindo!
                                 </h3>
-                                
                                 <div style="height: 2px; background-color: #714B67; width: 100px; margin: 20px auto; opacity: 0.3;"></div>
-                                
                                 <p style="font-size: 1.3rem; color: #666;">
                                     Selecione uma opção no menu superior para começar.
                                 </p>
                             </div>
-                        </div>
-                </form>
-            </field>
-        </record>
+
+                            <div id="chatbot" style="position: fixed; bottom: 20px; right: 20px; width: 320px; background: white; border: 1px solid #ced4da; border-radius: 12px; overflow: hidden; box-shadow: 0px 4px 15px rgba(0,0,0,0.15); z-index: 1000;">
+                                
+                                <div style="background: #714B67; color: white; padding: 10px; font-weight: bold;">
+                                    Assistente Clínica
+                                </div>
+
+                                <div id="chat-messages" style="height: 250px; overflow-y: auto; padding: 10px; background: #f8f9fa; display: flex; flex-direction: column; gap: 8px;">
+                                    <div style="background: #e2e2e2; padding: 6px 12px; border-radius: 15px; align-self: flex-start; max-width: 80%;">
+                                        Olá! Como posso ajudar hoje?
+                                    </div>
+                                </div>
+
+                                <div style="padding: 10px; border-top: 1px solid #eee; display: flex; gap: 5px;">
+                                    <input type="text" id="chat-input" placeholder="Digite..." style="flex-grow: 1; border: 1px solid #ccc; border-radius: 4px; padding: 6px; outline: none;"/>
+                                    <button type="button" class="btn btn-primary" onclick="enviarMensagem()" style="padding: 6px 12px;">
+                                        Enviar
+                                    </button>
+                                </div>
+                            </div>
+                        </div> </form>
+                </field>
+            </record>
+        
 
         <record id="action_clinica_dashboard" model="ir.actions.act_window">
             <field name="name">Boas-vindas</field>

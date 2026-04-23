@@ -194,6 +194,8 @@ class CombinacaoProduto(models.Model):
         required=True
     )
 
+   
+
     valor_final = fields.Float(string='Valor Final (R$)', required=True)
 
 
@@ -242,18 +244,12 @@ class Pedido(models.Model):
                 bundles = self.env['clinica.combinacao.produto'].search([
                     ('produto_principal_id', '=', item.produto_id.id)
                 ])
-                for bundle in bundles:
-                    if bundle.produto_relacionado_id not in produtos_no_pedido:
-                        raise ValidationError(
-                            f'Para aplicar o desconto de "{item.produto_id.name}", '
-                            f'o produto "{bundle.produto_relacionado_id.name}" '
-                            f'também precisa estar no pedido.'
-                        )
+                
 
     def action_imprimir_comprovante(self):
             # Garante que o usuário está olhando apenas um registro
             self.ensure_one()
-            # Chama a ação definida no seu XML
+            # Chama a ação definida no XML
             return self.env.ref('odoo_sample_module.action_report_comprovante_pedido').report_action(self)
 
 # ============================================================
@@ -325,10 +321,13 @@ class ItemPedido(models.Model):
             ], limit=1)
 
             if combinacao:
-                # Calculamos a diferença. 
-                # Se o preço é 10 e o valor final da combinação é 5, o desconto deve ser 5.
-                # Usamos abs() para garantir que o número seja sempre positivo
-                desconto = abs(item.preco_unitario - combinacao.valor_final)
+                # AGORA O CÓDIGO VAI LER SE É PERCENTUAL OU FIXO
+                if combinacao.tipo_desconto == 'percentual':
+                    # Calcula o percentual sobre o preço unitário
+                    desconto = item.preco_unitario * (combinacao.valor_final / 100)
+                else:
+                    # Aplica o valor fixo (o que você estava fazendo antes)
+                    desconto = combinacao.valor_final
             
             # 2. SE NÃO HOUVER COMBINAÇÃO, USA A REGRA DE PERFIL
             else:
