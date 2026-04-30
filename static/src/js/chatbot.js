@@ -1,67 +1,122 @@
 /** @odoo-module **/
 
-// Usamos uma função autoinvocável ou garantimos o escopo global de forma segura
 (function () {
     "use strict";
 
-    window.enviarMensagem = function () {
-        const input = document.getElementById("chat-input");
-        const chat = document.getElementById("chat-messages");
-        
-        if (!input || !chat) return;
+    let chatUuid = null;
+    let lastMessageId = 0;
 
-        const mensagem = input.value.trim();
-        if (!mensagem) return;
-
-        // 1. Adiciona a mensagem do usuário na tela (alinhada à direita)
-        const userDiv = document.createElement("div");
-        userDiv.style.cssText = "align-self: flex-end; background: #714B67; color: white; padding: 8px 12px; border-radius: 15px; max-width: 80%; margin-bottom: 5px;";
-        userDiv.innerHTML = `<b>Você:</b> ${mensagem}`;
-        chat.appendChild(userDiv);
-
-        // Limpa o input e rola para o fim
-        input.value = "";
-        chat.scrollTop = chat.scrollHeight;
-
-        // 2. Chamada ao Webhook do Chatbot (Rasa/Outros)
-        fetch("http://127.0.0.1:5005/webhooks/rest/webhook", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                sender: "user_odoo",
-                message: mensagem
-            })
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Erro na rede");
-            return res.json();
-        })
-        .then(data => {
-            data.forEach(msg => {
-                // 3. Adiciona a resposta do Bot (alinhada à esquerda)
-                const botDiv = document.createElement("div");
-                botDiv.style.cssText = "align-self: flex-start; background: #e2e2e2; color: #333; padding: 8px 12px; border-radius: 15px; max-width: 80%; margin-bottom: 5px;";
-                botDiv.innerHTML = `<b>Bot:</b> ${msg.text}`;
-                chat.appendChild(botDiv);
+    async function jsonRpc(url, params) {
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", params: params })
             });
-            chat.scrollTop = chat.scrollHeight;
-        })
-        .catch(err => {
-            console.error("Erro no Chatbot:", err);
-            const errorDiv = document.createElement("div");
-            errorDiv.style.cssText = "color: red; font-size: 0.8rem; text-align: center;";
-            errorDiv.innerText = "Erro ao conectar com o assistente.";
-            chat.appendChild(errorDiv);
-        });
-    };
-
-    // Permite enviar a mensagem ao apertar "Enter"
-    document.addEventListener("keypress", function (e) {
-        if (e.key === "Enter" && document.activeElement.id === "chat-input") {
-            window.enviarMensagem();
+            const data = await response.json();
+            if (data.error) {
+                console.error("Erro RPC:", data.error);
+                return null;
+            }
+            return data.result;
+        } catch (e) {
+            console.error("Falha na conexão:", e);
+            return null;
         }
-    });
+    }
 
+    async function escutarBot() {
+    if (!chatUuid) return;
+    try {
+        const result = await jsonRpc("/im_livechat/get_messages", {
+            uuid: chatUuid,
+            last_id: lastMessageId
+        });
+
+        if (result && result.length > 0) {
+            result.forEach(msg => {
+                // Se a mensagem tem um ID maior que o último que vimos
+                if (msg.id > lastMessageId) {
+                    // Verificamos se quem enviou NÃO foi o autor da sessão (você)
+                    // No Odoo, mensagens do Bot geralmente não trazem o nome 'Visitante'
+                    if (!msg.author_id[1].includes("Visitante")) {
+                        const tempDiv = document.createElement("div");
+                        tempDiv.innerHTML = msg.body;
+                        const cleanText = tempDiv.textContent || tempDiv.innerText || "";
+                        
+                        adicionarMensagemTela(cleanText, "Bot");
+                    }
+                    lastMessageId = msg.id;
+                }
+            });
+        }
+    } catch (e) { console.error("Erro na escuta:", e); }
+    setTimeout(escutarBot, 1500); // Diminuí para 1.5s para ser mais rápido
+}
+
+    window.enviarMensagem = async function () {
+    const input = document.getElementById("chat-input");
+    const mensagem = input?.value.trim();
+    if (!mensagem) return;
+
+    adicionarMensagemTela(mensagem, "Você");
+    input.value = "";
+
+    try {
+        if (!chatUuid) {
+            // Tentativa com context explícito, que muitas vezes é exigido pelo Odoo backend
+            const session = await jsonRpc("/im_livechat/get_session", {
+                channel_id: 2,
+                anonymous_name: "Visitante Clínica",
+                previous_operator_id: false,
+                context: { chatbot_script_id: 2 } // MUDOU DE 1 PARA 2
+            });
+            console.log("Resposta bruta do Odoo:", session); // ISSO VAI MOSTRAR O ERRO REAL
+
+            if (session && session.uuid) {
+                chatUuid = session.uuid;
+                escutarBot();
+                await new Promise(r => setTimeout(r, 600));
+            } else {
+                console.error("Odoo não gerou UUID. Verifique se o canal 2 tem regras de Chatbot ativas.");
+                return;
+            }
+        }
+
+        await jsonRpc("/mail/chat_post", {
+            uuid: chatUuid,
+            message_content: mensagem
+        });
+
+    } catch (err) {
+        console.error("Erro na comunicação:", err);
+    }
+};
+
+    function adicionarMensagemTela(texto, autor) {
+        const chat = document.getElementById("chat-messages");
+        if (!chat) return;
+
+        const msgDiv = document.createElement("div");
+        const isUser = autor === "Você";
+        
+        msgDiv.style.cssText = `
+            align-self: ${isUser ? 'flex-end' : 'flex-start'};
+            background: ${isUser ? '#714B67' : '#f1f1f1'};
+            color: ${isUser ? 'white' : '#333'};
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 85%;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-size: 0.95rem;
+            line-height: 1.4;
+        `;
+        
+        msgDiv.innerHTML = `<strong>${autor}:</strong> ${texto}`;
+        chat.appendChild(msgDiv);
+        
+        // Rola suavemente para a última mensagem
+        chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
+    }
 })();
