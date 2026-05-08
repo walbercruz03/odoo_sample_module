@@ -3,67 +3,110 @@
     <data>
 
                               <!-- Dashboard-->
-
-           <record id="view_clinica_dashboard" model="ir.ui.view">
-                <field name="name">clinica.dashboard.form</field>
-                <field name="model">clinica.dashboard</field>
-                <field name="arch" type="xml">
-                    <form string="Dashboard" create="false" edit="false" delete="false" duplicate="false">
+        <record id="view_clinica_dashboard" model="ir.ui.view">
+            <field name="name">clinica.dashboard.form</field>
+            <field name="model">clinica.dashboard</field>
+            <field name="arch" type="xml">
+                <form string="Dashboard" create="false" edit="false" delete="false" duplicate="false">
                     <script type="text/javascript" src="/im_livechat/loader/2"></script>
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background-color: white; z-index: 1;">
-                            
-                            <!-- Conteúdo Central -->
-                            <div style="max-width: 800px; width: 100%; text-align: center;"> 
-                                <h1 style="color: #714B67; font-weight: bold; font-size: 4rem; margin-bottom: 10px;">
-                                    Sistema Clínica
-                                </h1>
-                                <h3 class="text-muted" style="font-size: 1.5rem; font-style: italic; margin-bottom: 20px;">
-                                    Bem-vindo!
-                                </h3>
-                                <div style="height: 2px; background-color: #714B67; width: 100px; margin: 20px auto; opacity: 0.3;"></div>
-                                <p style="font-size: 1.3rem; color: #666;">
-                                    Selecione uma opção no menu superior para começar.
-                                </p>
+                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                    <script type="text/javascript" src="/odoo_sample_module/static/src/js/clinica_dashboard.js"></script>
+                    
+                    <div class="o_dashboard_container" style="background-color: #f8f9fa; min-height: 100vh; padding: 20px;">
+                        
+                        <div class="row mb-4">
+                            <div class="col-12 text-center">
+                                <h1 style="color: #714B67; font-weight: bold; margin-bottom: 5px;">Sistema Clínica</h1>
+                                <p class="text-muted" style="font-size: 1.1rem;">Visão Geral de Vendas e Atendimentos</p>
+                                <div style="height: 3px; background-color: #714B67; width: 60px; margin: 10px auto; border-radius: 2px; opacity: 0.5;"></div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card shadow-sm border-0 text-center p-3" style="border-radius: 10px; border-top: 4px solid #714B67 !important;">
+                                    <h6 class="text-uppercase text-muted small font-weight-bold">Faturamento Total</h6>
+                                    <h3 id="kpi_faturamento" style="color: #714B67;" class="font-weight-bold">R$ 0,00</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card shadow-sm border-0 text-center p-3" style="border-radius: 10px; border-top: 4px solid #28a745 !important;">
+                                    <h6 class="text-uppercase text-muted small font-weight-bold">Vendas de Produtos</h6>
+                                    <h3 id="kpi_produtos" class="text-success font-weight-bold">0</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card shadow-sm border-0 text-center p-3" style="border-radius: 10px; border-top: 4px solid #17a2b8 !important;">
+                                    <h6 class="text-uppercase text-muted small font-weight-bold">Procedimentos</h6>
+                                    <h3 id="kpi_procedimentos" class="text-info font-weight-bold">0</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card shadow-sm border-0 text-center p-3" style="border-radius: 10px; border-top: 4px solid #ffc107 !important;">
+                                    <h6 class="text-uppercase text-muted small font-weight-bold">Agendamentos Hoje</h6>
+                                    <h3 id="kpi_agendamentos" class="text-warning font-weight-bold">0</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-4">
+                                <div class="card shadow-sm border-0 p-4" style="border-radius: 15px; height: 400px;">
+                                    <h5 class="font-weight-bold mb-3" style="color: #444;">Evolução de Vendas</h5>
+                                    <div id="chart_vendas_line" style="background: #ffffff; height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc;">
+                                        <canvas id="canvas_vendas_line"></canvas>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Seu Card de Chat Customizado -->
-                            <div id="chatbot" class="o_ptr_chat_container" style="position: fixed; bottom: 20px; right: 20px; width: 350px; z-index: 1000;">
-                                <div class="card shadow">
-                                    <div class="card-header bg-primary text-white d-flex justify-content-between">
-                                        <span>Assistente Odoo</span>
+                            <div class="col-md-4 mb-4">
+                                <div class="card shadow-sm border-0 p-4" style="border-radius: 15px; height: 400px;">
+                                    <h5 class="font-weight-bold mb-3" style="color: #444;">Mix de Receita</h5>
+                                    <div id="chart_vendas_donut" style="background: #ffffff; height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc;">
+                                        <canvas id="canvas_vendas_donut"></canvas>
                                     </div>
-                                    <div id="chat-messages" class="card-body" style="height: 250px; overflow-y: auto; background: #fdfdfd; display: flex; flex-direction: column;">
-                                        <!-- As mensagens aparecerão aqui -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="chatbot" class="o_ptr_chat_container" style="position: fixed; bottom: 20px; right: 20px; width: 320px; z-index: 1000;">
+                            <div class="card shadow-lg border-0" style="border-radius: 15px; overflow: hidden;">
+                                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" style="background-color: #714B67 !important;">
+                                    <span class="font-weight-bold"><i class="fa fa-comments mr-2"></i>Assistente Clínica</span>
+                                    <i class="fa fa-minus" id="btn-minimizar" style="cursor: pointer; padding: 5px;" title="Minimizar"></i>
+                                </div>
+                                <div id="chat-messages" class="card-body" style="height: 200px; overflow-y: auto; background: #fff; display: flex; flex-direction: column; font-size: 0.9rem;">
                                     </div>
-                                    <div class="card-footer">
-                                        <div class="input-group">
-                                            <input type="text" id="chat-input" class="form-control" placeholder="Pergunte algo..."/>
-                                            <div class="input-group-append">
-                                                <button class="btn btn-primary" type="button" id="btn-enviar" onclick="window.enviarMensagem()">Enviar</button>
-                                            </div>
+                                <div id="chat-footer" class="card-footer bg-white border-0">
+                                    <div class="input-group">
+                                        <input type="text" id="chat-input" class="form-control border-light" placeholder="Como posso ajudar?" style="background: #f4f4f4; border-radius: 20px 0 0 20px;"/>
+                                        <div class="input-group-append">
+                                            <button class="btn btn-primary" id="btn-enviar" style="background-color: #714B67; border: none; border-radius: 0 20px 20px 0;">
+                                                <i class="fa fa-paper-plane"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                            </div> 
+                            </div>
                         </div> 
-                    </form>
-                </field>
-            </record>
-                    
+
+                    </div> 
+                </form>
+            </field>
+        </record>
 
         <record id="action_clinica_dashboard" model="ir.actions.act_window">
-            <field name="name">Boas-vindas</field>
+            <field name="name">Dashboard Clínica</field>
             <field name="res_model">clinica.dashboard</field>
-            <field name="view_mode">form</field>
-            <field name="target">current</field>
+            <field name="view_mode">form,graph,pivot</field> <field name="target">current</field>
             <field name="view_id" ref="view_clinica_dashboard"/>
         </record>
 
         <menuitem id="menu_clinica_root" 
           name="Clínica" 
           action="action_clinica_dashboard" 
-          sequence="1"/>
-
+          sequence="1"
+          web_icon="fa fa-magic,#714B67,#ffffff"/>
         <!-- ============================================================ -->
         <!-- 1. PERFIL DO CLIENTE                                          -->
         <!-- ============================================================ -->
@@ -554,6 +597,7 @@
         <field name="name">Gerar Tabela de Preços</field>
         <field name="res_model">clinica.relatorio.preco.wizard</field>
         <field name="view_mode">form</field>
+        <field name="view_id" ref="view_relatorio_preco_wizard_form"/>
         <field name="target">new</field>
     </record>
 
@@ -562,6 +606,104 @@
             parent="menu_clinica_config" 
             action="action_relatorio_preco_wizard"
             sequence="100"/>
+
+        <!-- ============================================================ -->
+        <!-- 10. RELATÓRIO DE VENDAS POR PERÍODO                            -->
+        <!-- ============================================================ -->
+
+        <!-- Ação do Relatório (PDF) -->
+        <record id="action_report_vendas_periodo" model="ir.actions.report">
+            <field name="name">Relatório de Vendas por Período</field>
+            <field name="model">clinica.relatorio.vendas.wizard</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">odoo_sample_module.report_vendas_periodo_template</field>
+            <field name="report_file">odoo_sample_module.report_vendas_periodo_template</field>
+            <field name="print_report_name">'Relatorio_Vendas'</field>
+            <field name="binding_model_id" eval="False"/>
+        </record>
+
+        <!-- Template QWeb para o Relatório de Vendas -->
+        <template id="report_vendas_periodo_template">
+            <t t-call="web.html_container">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="text-center">
+                            <h2>Relatório de Vendas</h2>
+                            <p>Período de <span t-esc="form.get('data_inicio')"/> até <span t-esc="form.get('data_fim')"/></p>
+                        </div>
+
+                        <div class="row mt-4 mb-4">
+                            <div class="col-6">
+                                <strong>Total de Pedidos:</strong>
+                                <span t-esc="form.get('quantidade_pedidos')"/>
+                            </div>
+                            <div class="col-6 text-right">
+                                <strong>Valor Total das Vendas:</strong>
+                                R$ <span t-esc="form.get('total_vendas')" t-options='{"widget": "float", "precision": 2}'/>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm table-striped mt-4">
+                            <thead>
+                                <tr>
+                                    <th>Data do Pedido</th>
+                                    <th>Cliente</th>
+                                    <th class="text-right">Valor Total (R$)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="request.env['clinica.pedido'].browse(pedidos)" t-as="pedido">
+                                    <tr>
+                                        <td>
+                                            <span t-field="pedido.data_hora" t-options='{"format": "dd/MM/yyyy HH:mm"}'/>
+                                        </td>
+                                        <td>
+                                            <span t-field="pedido.cliente_id.name"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-field="pedido.valor_total"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </template>
+
+        <record id="view_relatorio_vendas_wizard_form" model="ir.ui.view">
+            <field name="name">clinica.relatorio.vendas.wizard.form</field>
+            <field name="model">clinica.relatorio.vendas.wizard</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <field name="data_inicio"/>
+                        <field name="data_fim"/>
+                    </group>
+                    <footer>
+                        <button name="imprimir_relatorio" string="Gerar PDF" type="object" class="btn-primary"/>
+                        <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Ação da Janela (Wizard) que o menu irá chamar -->
+        <record id="action_relatorio_vendas_wizard" model="ir.actions.act_window">
+            <field name="name">Gerar Relatório de Vendas</field>
+            <field name="res_model">clinica.relatorio.vendas.wizard</field>
+            <field name="view_mode">form</field>
+        <field name="view_id" ref="view_relatorio_vendas_wizard_form"/>
+            <field name="target">new</field>
+        </record>
+
+        <!-- Item de Menu -->
+        <menuitem id="menu_relatorio_vendas"
+                name="Relatório de Vendas"
+                parent="menu_clinica_config" 
+                action="action_relatorio_vendas_wizard"
+                sequence="110"/>
 
               <!-- Comprovante de Venda!-->
 

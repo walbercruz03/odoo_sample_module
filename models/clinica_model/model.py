@@ -1,5 +1,5 @@
 from odoo import models, fields, api
-from datetime import timedelta
+from datetime import datetime, timedelta, time
 from odoo.exceptions import ValidationError 
 
 
@@ -11,6 +11,55 @@ class ClinicaDashboard(models.TransientModel):
     #campo de texto se quiser exibir mensagens dinâmicas.
     name = fields.Char(string="Título", default="Dashboard Clínica")
 
+    @api.model
+    def get_dashboard_data(self):
+        """
+        Método chamado via RPC pelo Javascript para alimentar os KPIs e gráficos do Dashboard.
+        """
+        hoje = fields.Date.today()
+        hoje_inicio = fields.Datetime.to_string(datetime.combine(hoje, time.min))
+        
+        pedidos = self.env['clinica.pedido'].search([])
+        itens = self.env['clinica.item.pedido'].search([])
+        
+        # 1. Indicadores (KPIs)
+        faturamento_total = sum(pedidos.mapped('valor_total'))
+        
+        vendas_produtos = sum(itens.filtered(lambda i: i.produto_id.tipo_produto == 'produto').mapped('quantidade'))
+        procedimentos = sum(itens.filtered(lambda i: i.produto_id.tipo_produto == 'servico').mapped('quantidade'))
+        
+        pedidos_hoje = self.env['clinica.pedido'].search([('data_hora', '>=', hoje_inicio)])
+        agendamentos_hoje = len(pedidos_hoje)
+        
+        # 2. Dados Gráfico de Rosca (Mix de Receita)
+        faturamento_produtos = sum(itens.filtered(lambda i: i.produto_id.tipo_produto == 'produto').mapped('valor_final'))
+        faturamento_servicos = sum(itens.filtered(lambda i: i.produto_id.tipo_produto == 'servico').mapped('valor_final'))
+        
+        # 3. Dados Gráfico de Linha (Últimos 7 dias de Vendas)
+        datas_label = []
+        valores_vendas = []
+        for i in range(6, -1, -1):
+            dia = hoje - timedelta(days=i)
+            pedidos_dia = self.env['clinica.pedido'].search([
+                ('data_hora', '>=', fields.Datetime.to_string(datetime.combine(dia, time.min))),
+                ('data_hora', '<=', fields.Datetime.to_string(datetime.combine(dia, time.max)))
+            ])
+            datas_label.append(dia.strftime('%d/%m'))
+            valores_vendas.append(sum(pedidos_dia.mapped('valor_total')))
+            
+        return {
+            'kpis': {
+                'faturamento_total': faturamento_total,
+                'vendas_produtos': vendas_produtos,
+                'procedimentos': procedimentos,
+                'agendamentos_hoje': agendamentos_hoje,
+            },
+            'charts': {
+                'mix_receita': [faturamento_produtos, faturamento_servicos],
+                'linha_datas': datas_label,
+                'linha_valores': valores_vendas,
+            }
+        }
 
 # ============================================================
 # 1. PERFIL DO CLIENTE
@@ -293,10 +342,17 @@ class ItemPedido(models.Model):
     store=True
     )  
 
+    preco_vencido = fields.Boolean(
+        string='Preço Vencido',
+        compute='_compute_preco_unitario',
+        store=True
+    )
+
     @api.depends('produto_id', 'pedido_id.cliente_id.perfil_cliente_id', 'quantidade')
     def _compute_preco_unitario(self):
         hoje = fields.Date.today()
         for item in self:
+            is_vencido = False
             preco_base = self.env['clinica.preco.base'].search([
                 ('produto_id', '=', item.produto_id.id),
                 ('data_inicio', '<=', hoje),
@@ -304,7 +360,43 @@ class ItemPedido(models.Model):
                 ('data_fim', '=', False),
                 ('data_fim', '>=', hoje),
             ], order='data_inicio desc', limit=1)
+            
+            # Se não encontrou preço estritamente vigente, busca o preço mais recente cadastrado
+            if not preco_base:
+                preco_base = self.env['clinica.preco.base'].search([
+                    ('produto_id', '=', item.produto_id.id),
+                    ('data_inicio', '<=', hoje),
+                ], order='data_inicio desc', limit=1)
+                if preco_base:
+                    is_vencido = True
+                
             item.preco_unitario = preco_base.valor if preco_base else 0.0
+            item.preco_vencido = is_vencido
+
+    @api.onchange('produto_id')
+    def _onchange_aviso_preco_vencido(self):
+        if self.produto_id:
+            hoje = fields.Date.today()
+            preco_vigente = self.env['clinica.preco.base'].search([
+                ('produto_id', '=', self.produto_id.id),
+                ('data_inicio', '<=', hoje),
+                '|',
+                ('data_fim', '=', False),
+                ('data_fim', '>=', hoje),
+            ], limit=1)
+
+            if not preco_vigente:
+                preco_fallback = self.env['clinica.preco.base'].search([
+                    ('produto_id', '=', self.produto_id.id),
+                    ('data_inicio', '<=', hoje),
+                ], limit=1)
+                if preco_fallback:
+                    return {
+                        'warning': {
+                            'title': 'Aviso: Preço Vencido',
+                            'message': f'A tabela de preços para "{self.produto_id.name}" está vencida! O sistema aplicou o último valor cadastrado (R$ {preco_fallback.valor:.2f}).'
+                        }
+                    }
 
 
     @api.depends('produto_id', 'quantidade', 'preco_unitario', 'pedido_id.cliente_id.perfil_cliente_id', 'pedido_id.item_ids.produto_id')
@@ -393,3 +485,41 @@ class RelatorioPrecoWizard(models.TransientModel):
             }
             
             return self.env.ref('odoo_sample_module.action_report_tabela_precos').report_action(self, data=data)
+
+
+# ============================================================
+# 9. RELATÓRIO DE VENDAS POR PERÍODO
+# ============================================================
+class RelatorioVendasWizard(models.TransientModel):
+    _name = 'clinica.relatorio.vendas.wizard'
+    _description = 'Wizard de Relatório de Vendas por Período'
+
+    data_inicio = fields.Date(string='Data Início', required=True, default=fields.Date.today)
+    data_fim = fields.Date(string='Data Fim', required=True, default=fields.Date.today)
+
+    def imprimir_relatorio(self):
+        self.ensure_one()
+        
+        data_inicio_fmt = self.data_inicio.strftime('%d/%m/%Y')
+        data_fim_fmt = self.data_fim.strftime('%d/%m/%Y')
+
+        # Busca os pedidos dentro do período selecionado
+        pedidos = self.env['clinica.pedido'].search([
+            ('data_hora', '>=', self.data_inicio),
+            ('data_hora', '<=', self.data_fim),
+        ], order='data_hora asc')
+
+        # Prepara os dados para o relatório em PDF/HTML
+        data = {
+            'ids': self.ids,
+            'model': self._name,
+            'form': {
+                'data_inicio': data_inicio_fmt, 
+                'data_fim': data_fim_fmt,
+                'total_vendas': sum(pedidos.mapped('valor_total')),
+                'quantidade_pedidos': len(pedidos),
+            },
+            'pedidos': pedidos.ids,
+        }
+        
+        return self.env.ref('odoo_sample_module.action_report_vendas_periodo').report_action(self, data=data)

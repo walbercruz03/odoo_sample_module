@@ -13,7 +13,8 @@
     "depends": [
         "base", 
         "mail", 
-        "account"
+        "account",
+        "im_livechat"
     ],
     "data": [
         "security/ir.model.access.csv",
@@ -25,10 +26,9 @@
     ],
     "assets": {
         "web.assets_backend": [
-        "odoo_sample_module/static/src/js/chatbot.js",
-    ],
+            "odoo_sample_module/static/src/js/chatbot.js",
+        ],
     },
-    "qweb": [],
     "images": [],
     "installable": True,
     "application": True,

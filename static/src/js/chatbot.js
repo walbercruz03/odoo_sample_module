@@ -11,7 +11,7 @@
             const response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ jsonrpc: "2.0", params: params })
+                body: JSON.stringify({ jsonrpc: "2.0", id: Math.floor(Math.random() * 1000000), params: params })
             });
             const data = await response.json();
             if (data.error) {
@@ -28,18 +28,18 @@
     async function escutarBot() {
     if (!chatUuid) return;
     try {
-        const result = await jsonRpc("/im_livechat/get_messages", {
+        const result = await jsonRpc("/mail/chat_history", {
             uuid: chatUuid,
-            last_id: lastMessageId
+            limit: 30
         });
 
         if (result && result.length > 0) {
-            result.forEach(msg => {
+            [...result].reverse().forEach(msg => {
                 // Se a mensagem tem um ID maior que o último que vimos
                 if (msg.id > lastMessageId) {
                     // Verificamos se quem enviou NÃO foi o autor da sessão (você)
                     // No Odoo, mensagens do Bot geralmente não trazem o nome 'Visitante'
-                    if (!msg.author_id[1].includes("Visitante")) {
+                    if (!msg.author_id || (Array.isArray(msg.author_id) && !msg.author_id[1].includes("Visitante"))) {
                         const tempDiv = document.createElement("div");
                         tempDiv.innerHTML = msg.body;
                         const cleanText = tempDiv.textContent || tempDiv.innerText || "";
@@ -56,20 +56,48 @@
 
     window.enviarMensagem = async function () {
     const input = document.getElementById("chat-input");
-    const mensagem = input?.value.trim();
+    if (!input) {
+        console.error("ERRO BOT: Elemento com id 'chat-input' não foi encontrado no seu XML!");
+        return;
+    }
+
+    const mensagem = input.value.trim();
     if (!mensagem) return;
 
     adicionarMensagemTela(mensagem, "Você");
     input.value = "";
 
+    // === LÓGICA DE ASSISTENTE VIRTUAL DA PLATAFORMA (FAQ) ===
+    const textoMin = mensagem.toLowerCase();
+    let respostaBot = "";
+
+    if (textoMin.includes("cadastrar cliente") || textoMin.includes("novo cliente") || textoMin.includes("clientes")) {
+        respostaBot = "Para cadastrar um <b>Cliente</b>, vá no menu principal em <b>Clientes</b> e clique em <b>Novo</b>. Lá você poderá preencher os dados pessoais e marcar as opções de Perfil (VIP, Convênio ou Cliente Novo).";
+    } else if (textoMin.includes("cadastrar produto") || textoMin.includes("novo produto") || textoMin.includes("produtos")) {
+        respostaBot = "Para cadastrar um <b>Produto ou Serviço</b>, navegue até a aba de <b>Produtos</b> e clique em <b>Novo</b>. Lembre-se de criar também as 'Regras de Preço' e os 'Preços Base' para ativar a vigência!";
+    } else if (textoMin.includes("pedido") || textoMin.includes("venda")) {
+        respostaBot = "Para fazer um pedido, vá na tela de <b>Pedidos</b> e clique em <b>Novo</b>. Ao adicionar os itens ao carrinho, o preço correto e os descontos (como promoções de perfis e combinações) serão aplicados automaticamente pelo sistema.";
+    } else if (textoMin.includes("ajuda") || textoMin.includes("como usar") || textoMin.includes("olá") || textoMin.includes("oi")) {
+        respostaBot = "Olá! Eu sou o Assistente Inteligente da Clínica. Como posso ajudar? Você pode me perguntar como cadastrar <b>Clientes</b>, <b>Produtos</b> ou <b>Pedidos</b>.";
+    }
+
+    if (respostaBot) {
+        // Se o bot sabe responder, simula um "digitando" e injeta a mensagem na tela
+        setTimeout(() => {
+            adicionarMensagemTela(respostaBot, "Assistente Virtual");
+        }, 600);
+        return; // Interrompe a execução aqui para não enviar para o servidor Odoo
+    }
+    // ==========================================================
+
     try {
         if (!chatUuid) {
             // Tentativa com context explícito, que muitas vezes é exigido pelo Odoo backend
             const session = await jsonRpc("/im_livechat/get_session", {
-                channel_id: 2,
+                channel_id: 2, // Ajustado para bater com o canal importado no XML
                 anonymous_name: "Visitante Clínica",
                 previous_operator_id: false,
-                context: { chatbot_script_id: 2 } // MUDOU DE 1 PARA 2
+                context: {} // Removido hardcode do script para evitar falha fatal de UUID nulo
             });
             console.log("Resposta bruta do Odoo:", session); // ISSO VAI MOSTRAR O ERRO REAL
 
@@ -83,7 +111,7 @@
             }
         }
 
-        await jsonRpc("/mail/chat_post", {
+        await jsonRpc("/im_livechat/chat_post", {
             uuid: chatUuid,
             message_content: mensagem
         });
@@ -95,7 +123,10 @@
 
     function adicionarMensagemTela(texto, autor) {
         const chat = document.getElementById("chat-messages");
-        if (!chat) return;
+        if (!chat) {
+            console.error("ERRO BOT: Elemento com id 'chat-messages' não foi encontrado no seu XML!");
+            return;
+        }
 
         const msgDiv = document.createElement("div");
         const isUser = autor === "Você";
@@ -119,4 +150,39 @@
         // Rola suavemente para a última mensagem
         chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
     }
+
+    // === DELEGAÇÃO DE EVENTOS PARA COMPATIBILIDADE COM ODOO SPA ===
+    // O Odoo remove atributos 'onclick' do XML por segurança.
+    // Esta delegação captura o evento no documento inteiro.
+    document.addEventListener('click', function (e) {
+        // Verifica com segurança se closest existe no target antes de chamar
+        const btnEnviar = (e.target && e.target.closest) ? e.target.closest('#btn-enviar') : null;
+        if (btnEnviar) {
+            e.preventDefault(); // Impede o botão de tentar recarregar a tela/form
+            window.enviarMensagem();
+        }
+        
+        // Verifica se clicou no botão de minimizar/maximizar
+        const btnMinimizar = (e.target && e.target.closest) ? e.target.closest('#btn-minimizar') : null;
+        if (btnMinimizar) {
+            e.preventDefault();
+            const chatMessages = document.getElementById('chat-messages');
+            const chatFooter = document.getElementById('chat-footer');
+            
+            if (chatMessages.style.display === 'none') {
+                chatMessages.style.display = 'flex'; // Volta para o display padrão da caixa
+                chatFooter.style.display = 'block';
+                btnMinimizar.classList.replace('fa-plus', 'fa-minus');
+            } else {
+                chatMessages.style.display = 'none'; // Esconde as mensagens
+                chatFooter.style.display = 'none'; // Esconde o campo de texto
+                btnMinimizar.classList.replace('fa-minus', 'fa-plus'); // Troca o ícone para um "+"
+            }
+        }
+    });
+    document.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter' && e.target && e.target.id === 'chat-input') {
+            window.enviarMensagem();
+        }
+    });
 })();
